@@ -1,0 +1,75 @@
+# Permisos de acceso a filesystem por agente.
+# "none" | "read" | "write" | "read_write"
+#
+# project_dir       = el código real del proyecto que se está migrando/revisando
+# harness/config    = donde el Planner deja plan.json y contratos
+# harness/logs      = donde el Executor deja su bitácora de trabajo
+# harness/validation = donde el Compliance deja sus veredictos
+# harness/interfaces = interfaz REAL que Executor reporta tras generar un item
+#                       (complementa la interfaz predicha por el Planner en
+#                       plan.json — ver schemas/plan.contract.md)
+
+agents:
+  analyzer:
+    project_dir: none
+    harness_config: none
+    harness_logs: none
+    harness_validation: none
+    harness_interfaces: none
+
+  planner:
+    project_dir: none
+    harness_config: read_write
+    harness_logs: none
+    harness_validation: none
+    harness_interfaces: none
+
+  executor:
+    project_dir: read_write
+    harness_config: read
+    harness_logs: write
+    harness_validation: none
+    harness_interfaces: read_write
+
+  # Mismos permisos que executor -- es el mismo rol (genera código de un
+  # item), solo cambia el motor/modelo (ver models.yaml). Resolutor final
+  # tras agotar reintentos normales, ver orchestrator.py::loop().
+  executor_senior:
+    project_dir: read_write
+    harness_config: read
+    harness_logs: write
+    harness_validation: none
+    harness_interfaces: read_write
+
+  compliance:
+    project_dir: read
+    harness_config: read
+    harness_logs: read
+    harness_validation: write
+    harness_interfaces: read
+
+  # Resuelve ambigüedades puntuales cuando executor se bloquea -- solo
+  # necesita ver lo mismo que executor ve al armar su contexto (plan +
+  # interfaces de dependencias), nunca el código del proyecto (no hay
+  # código generado que revisar: un item bloqueado no escribió nada). Deja
+  # su propia bitácora en harness_logs (arbitraje.jsonl), no toca
+  # validation ni interfaces -- no genera código ni emite veredictos.
+  arbitro:
+    project_dir: none
+    harness_config: read
+    harness_logs: write
+    harness_validation: none
+    harness_interfaces: read
+
+  # Propone candidatos de documentación a partir de items que tuvieron
+  # rechazo(s) y después se aprobaron -- lee el rechazo real (reporte_fallas.md)
+  # y el código final ya aprobado, nunca escribe en knowledge/ ni en
+  # .agents/rules/ directamente (eso lo decide el Planner a mano). Deja su
+  # propuesta en harness_logs (candidatos_conocimiento.md), append-only,
+  # mismo patrón que reporte_fallas.md.
+  documentador:
+    project_dir: read
+    harness_config: read
+    harness_logs: read_write
+    harness_validation: none
+    harness_interfaces: none

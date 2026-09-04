@@ -1,0 +1,7 @@
+requests == 2.34.2
+pyyaml == 6.0.3
+python-dotenv == 1.2.3
+pytest == 9.1.1   # no lo usa el harness en runtime; lo necesita test_executor_logic.py
+                  # para probar smoke_test.py corriendo pytest de verdad, no simulado
+ruff == 0.16.4    # usado por format_check.py (regla F401, imports no usados) -- análisis
+                  # puramente estático, no necesita el venv del proyecto destino

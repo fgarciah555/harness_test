@@ -1,0 +1,59 @@
+# Copiá este archivo a config/models.yaml y ajustá base_url a tu entorno.
+# config/models.yaml es específico de cada máquina (tiene una IP local) —
+# no lo compartas como si fuera portable, cada instalación necesita la suya.
+#
+# Cómo encontrar la IP si corrés LM Studio en Windows y el harness en WSL2:
+#   PowerShell (Windows): Get-NetIPAddress -InterfaceAlias "vEthernet (WSL)"
+#   No uses "localhost" — WSL2 en modo NAT (default) no comparte localhost
+#   con Windows.
+
+agents:
+  analyzer:
+    engine: lm_studio
+    model: qwen/qwen3.8-27b
+    timeout_seconds: 90
+
+  planner:
+    engine: lm_studio
+    model: qwen/qwen3.8-27b
+    timeout_seconds: 180
+
+  executor:
+    engine: deepseek
+    model: deepseek-chat
+    timeout_seconds: 180
+
+  compliance:
+    engine: deepseek
+    model: deepseek-reasoner
+    timeout_seconds: 240       # razona antes de responder, y recibe más contexto (infra + dependencias reales) -- más margen que deepseek-chat
+
+  # Opcionales -- si no los definís acá, orchestrator.py simplemente no los usa
+  # (ver _executor_senior_disponible()/_arbitro_disponible()):
+  #
+  # executor_senior: resolutor final tras agotar --max-reintentos con
+  #   'executor' y seguir rechazado por Compliance (motor más fuerte).
+  # arbitro: resuelve ambigüedades puntuales del plan cuando 'executor' se
+  #   bloquea (### BLOQUEADO) -- ver agents/arbitro.py.
+  arbitro:
+    engine: deepseek
+    model: deepseek-reasoner
+    timeout_seconds: 180
+
+engines:
+  lm_studio:
+    base_url: "http://<IP-de-tu-vEthernet-WSL>:1234/v1"
+  deepseek:
+    # la api key se lee de la variable de entorno DEEPSEEK_API_KEY, no va acá.
+    # deepseek-reasoner ya en uso por compliance (ver Pendientes.md, "¿Compliance
+    # debería usar deepseek-reasoner?") -- cuando se automatice Planner/
+    # entrevistador (necesitan razonamiento multi-paso), mismo criterio.
+  kimi:
+    # la api key se lee de la variable de entorno KIMI_API_KEY, no va acá.
+    # Alternativa a lm_studio para executor/documentador cuando no hay acceso
+    # al motor local -- ver README.md, "Motor por API (Kimi)". Modelo
+    # distinto por agente (orchestrator.py::KIMI_MODEL_FALLBACK):
+    # kimi-k2.7-code para executor (genera código real), kimi-k2.6 para
+    # documentador (solo clasifica/resume texto).
+  anthropic:
+    # la api key se lee de la variable de entorno ANTHROPIC_API_KEY, no va acá

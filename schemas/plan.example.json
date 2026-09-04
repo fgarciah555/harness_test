@@ -1,0 +1,231 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "proyecto": "monolito-pedidos",
+    "generado_en": "2026-08-19T14:30:00-03:00",
+    "generado_por": "felipe+claude",
+    "monolito_origen": "fixtures/monolito_pedidos/app.py",
+    "arquitectura_objetivo": {
+      "backend": "FastAPI",
+      "frontend": "Angular"
+    }
+  },
+  "decisiones_globales": {
+    "auth_destino": "JWT bearer. Login emite access_token (15min) + refresh_token (7d). Reemplaza la sesión de servidor (flask.session) del monolito. FastAPI valida con OAuth2PasswordBearer.",
+    "prefijo_api": "/api/v1",
+    "casing_json": "camelCase",
+    "manejo_errores": "Formato de error estándar según error-handling.md: { \"error\": { \"code\": string, \"message\": string } }, códigos HTTP semánticos (401 credenciales inválidas, 404 pedido inexistente, 422 validación)."
+  },
+  "items": [
+    {
+      "id": "PED-001",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "ruta /login, valida usuario/password contra tabla usuarios con SQL directo, guarda user_id en flask.session"
+      },
+      "tipo": "backend",
+      "ticket_id": "TCK-AUTH-001",
+      "descripcion": "Endpoint de login: valida credenciales y emite JWT en vez de sesión de servidor.",
+      "archivos_destino": [
+        "backend/app/api/v1/auth.py",
+        "backend/app/schemas/auth.py",
+        "backend/app/services/auth_service.py"
+      ],
+      "detalle_tecnico": "POST /api/v1/auth/login recibe { email, password }. Valida contra tabla usuarios (reemplazar SQL directo por consulta vía ORM del backend destino). Si es válido, devuelve { accessToken, refreshToken }. Si no, 401 con formato de error estándar. La comparación de password debe usar hashing (el monolito compara en texto plano — no preservar eso, corregirlo acá).",
+      "criterios_aceptacion": [
+        "POST /api/v1/auth/login con credenciales válidas devuelve 200 y un accessToken JWT decodificable",
+        "POST /api/v1/auth/login con password incorrecta devuelve 401 con el formato de error estándar",
+        "El password se compara contra un hash almacenado, no en texto plano",
+        "No hay uso de flask.session ni de la secret_key hardcodeada del monolito en el código generado"
+      ],
+      "depende_de": [],
+      "interfaz": {
+        "endpoint": {
+          "metodo": "POST",
+          "ruta": "/api/v1/auth/login",
+          "request": { "email": "string", "password": "string" },
+          "response_200": { "accessToken": "string (JWT)", "refreshToken": "string" }
+        },
+        "dependencia_reusable": {
+          "nombre": "get_current_user",
+          "import": "app.services.auth_service.get_current_user",
+          "firma": "() -> Usuario",
+          "uso": "FastAPI Depends() para proteger endpoints que requieren JWT válido"
+        }
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "PED-002",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "ruta /pedidos (GET), lista pedidos del usuario en sesión con SQL directo"
+      },
+      "tipo": "backend",
+      "ticket_id": "TCK-PEDIDOS-001",
+      "descripcion": "Endpoint que lista los pedidos del usuario autenticado.",
+      "archivos_destino": [
+        "backend/app/api/v1/pedidos_listar.py",
+        "backend/app/schemas/pedido_listar.py",
+        "backend/app/services/pedido_listar_service.py"
+      ],
+      "detalle_tecnico": "GET /api/v1/pedidos, requiere JWT válido (usa el usuario del token, no de sesión). Devuelve lista de pedidos del usuario: id, fecha, estado, total. Reemplazar el SQL directo del monolito por acceso vía ORM.",
+      "criterios_aceptacion": [
+        "GET /api/v1/pedidos sin token devuelve 401",
+        "GET /api/v1/pedidos con token válido devuelve solo los pedidos del usuario del token (no de otros usuarios)",
+        "La respuesta usa camelCase según decisiones_globales.casing_json"
+      ],
+      "depende_de": ["PED-001"],
+      "interfaz": {
+        "endpoint": {
+          "metodo": "GET",
+          "ruta": "/api/v1/pedidos",
+          "request": { "headers": { "Authorization": "Bearer <accessToken>" } },
+          "response_200": [{ "id": "string", "fecha": "string (ISO 8601)", "estado": "string", "total": "number" }]
+        }
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "PED-003",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "ruta /pedidos (POST), crea pedido con SQL directo, sin validar longitud de nota"
+      },
+      "tipo": "backend",
+      "ticket_id": "TCK-PEDIDOS-001",
+      "descripcion": "Endpoint que crea un pedido nuevo para el usuario autenticado.",
+      "archivos_destino": [
+        "backend/app/api/v1/pedidos_crear.py",
+        "backend/app/schemas/pedido_crear.py",
+        "backend/app/services/pedido_crear_service.py"
+      ],
+      "detalle_tecnico": "POST /api/v1/pedidos, requiere JWT válido. Recibe items del pedido y nota opcional. Crea el pedido asociado al usuario del token. Reemplazar SQL directo por ORM. Agregar validación de longitud máxima en el campo nota (500 caracteres) — ver riesgos_heredados.",
+      "criterios_aceptacion": [
+        "POST /api/v1/pedidos sin token devuelve 401",
+        "POST /api/v1/pedidos con datos válidos devuelve 201 y el pedido creado con id asignado",
+        "POST /api/v1/pedidos con nota de más de 500 caracteres devuelve 422",
+        "El pedido creado queda asociado al usuario del token, no a un user_id arbitrario del body"
+      ],
+      "depende_de": ["PED-001"],
+      "interfaz": {
+        "endpoint": {
+          "metodo": "POST",
+          "ruta": "/api/v1/pedidos",
+          "request": {
+            "headers": { "Authorization": "Bearer <accessToken>" },
+            "body": { "items": "array", "nota": "string, opcional, máx 500 caracteres" }
+          },
+          "response_201": { "id": "string", "fecha": "string (ISO 8601)", "estado": "string", "total": "number" }
+        }
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "PED-004",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "template de login (Jinja2), formulario de usuario/password"
+      },
+      "tipo": "frontend",
+      "ticket_id": "TCK-AUTH-001",
+      "descripcion": "Pantalla de login en Angular, consume el endpoint de auth destino.",
+      "archivos_destino": [
+        "frontend/src/app/features/auth/login/login.component.ts",
+        "frontend/src/app/features/auth/login/login.component.html",
+        "frontend/src/app/core/services/auth.service.ts"
+      ],
+      "detalle_tecnico": "Formulario reactivo con email y password. Al enviar, llama a POST /api/v1/auth/login. Si es exitoso, guarda accessToken/refreshToken (según auth-strategy definida en frontend-angular.md) y navega a /pedidos. Si falla, muestra el mensaje de error devuelto por el backend.",
+      "criterios_aceptacion": [
+        "Envío del formulario con credenciales válidas navega a /pedidos",
+        "Envío con credenciales inválidas muestra el mensaje de error del backend sin navegar",
+        "El formulario no permite submit con campos vacíos"
+      ],
+      "depende_de": ["PED-001"],
+      "interfaz": {
+        "servicio_expuesto": {
+          "nombre": "AuthService",
+          "metodos": ["login(email: string, password: string): Observable<void>", "isAuthenticated(): boolean"]
+        },
+        "efecto": "guarda accessToken/refreshToken tras login exitoso; usado por el guard de rutas de PED-005"
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "PED-005",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "template de listado de pedidos (Jinja2)"
+      },
+      "tipo": "frontend",
+      "ticket_id": "TCK-PEDIDOS-001",
+      "descripcion": "Listado de pedidos del usuario autenticado en Angular.",
+      "archivos_destino": [
+        "frontend/src/app/features/pedidos/pedidos-list/pedidos-list.component.ts",
+        "frontend/src/app/features/pedidos/pedidos-list/pedidos-list.component.html",
+        "frontend/src/app/features/pedidos/pedidos.service.ts"
+      ],
+      "detalle_tecnico": "Al entrar a /pedidos, llama a GET /api/v1/pedidos y muestra tabla con id, fecha, estado, total. Si no hay token válido, redirige a /login (guard de ruta).",
+      "criterios_aceptacion": [
+        "Usuario autenticado ve su listado de pedidos al entrar a /pedidos",
+        "Usuario sin token es redirigido a /login al intentar entrar a /pedidos",
+        "La tabla se actualiza si se crea un pedido nuevo desde PED-006"
+      ],
+      "depende_de": ["PED-002"],
+      "interfaz": {
+        "servicio_expuesto": {
+          "nombre": "PedidosService",
+          "metodos": ["listar(): Observable<Pedido[]>"]
+        },
+        "ruta_angular": "/pedidos"
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "PED-006",
+      "origen": {
+        "archivo": "fixtures/monolito_pedidos/app.py",
+        "referencia": "template de creación de pedido (Jinja2)"
+      },
+      "tipo": "frontend",
+      "ticket_id": "TCK-PEDIDOS-001",
+      "descripcion": "Formulario de creación de pedido en Angular.",
+      "archivos_destino": [
+        "frontend/src/app/features/pedidos/crear-pedido/crear-pedido.component.ts",
+        "frontend/src/app/features/pedidos/crear-pedido/crear-pedido.component.html"
+      ],
+      "detalle_tecnico": "Formulario reactivo con items del pedido y nota (máx. 500 caracteres, validado en el form además del backend). Al enviar, llama a POST /api/v1/pedidos y navega de vuelta al listado.",
+      "criterios_aceptacion": [
+        "Envío válido crea el pedido y navega a /pedidos",
+        "El campo nota no permite ingresar más de 500 caracteres",
+        "Errores del backend (422, 401) se muestran al usuario sin romper la pantalla"
+      ],
+      "depende_de": ["PED-003"],
+      "interfaz": {
+        "servicio_expuesto": {
+          "nombre": "PedidosService",
+          "metodos": ["crear(pedido: { items, nota? }): Observable<Pedido>"]
+        },
+        "ruta_angular": "/pedidos/crear"
+      },
+      "estado": "pendiente"
+    }
+  ],
+  "riesgos_heredados": [
+    {
+      "descripcion": "El monolito compara passwords en texto plano, sin hashing.",
+      "item_relacionado": "PED-001",
+      "mitigacion": "No se preserva: se corrige en la migración usando hashing en el backend destino (ver detalle_tecnico de PED-001)."
+    },
+    {
+      "descripcion": "El monolito no valida longitud máxima del campo nota al crear un pedido.",
+      "item_relacionado": "PED-003",
+      "mitigacion": "Se agrega validación de 500 caracteres en backend (PED-003) y frontend (PED-006). No se replican otras reglas de negocio no documentadas en el monolito."
+    },
+    {
+      "descripcion": "El monolito no tiene tests automatizados.",
+      "item_relacionado": null,
+      "mitigacion": "Fuera de alcance de esta fase (foco actual es migración de código, no smoke test/JMeter — ver handoff.md). Revisar cuando se implemente Format check y Smoke test."
+    }
+  ]
+}

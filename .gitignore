@@ -1,0 +1,15 @@
+.env
+venv/
+__pycache__/
+*.pyc
+config/models.yaml
+.ruff_cache/
+.pytest_cache/
+.claude/settings.local.json
+
+# Contenido real de proyectos migrados: rutas locales y detalle de clientes,
+# nunca sube al repo -- ver config/proyectos.yaml.example para la estructura.
+handoff.md
+handoff.md.bak-*
+Pendientes.md
+config/proyectos.yaml

@@ -1,0 +1,14 @@
+# Registro de proyectos que el harness está migrando -- mantenimiento
+# manual (agregar una entrada cuando arranca una migración nueva). Ver
+# estado_proyectos.py: para cada uno, calcula el estado REAL leyendo su
+# propio .harness/ (plan.json + logs/executor.jsonl + validation/), nunca
+# un snapshot guardado acá -- este archivo solo dice dónde está cada
+# proyecto, no en qué estado.
+#
+# Copiar a config/proyectos.yaml (gitignored -- contiene rutas locales y
+# detalle real de clientes) y completar con los proyectos propios.
+
+proyectos:
+  - nombre: nombre-del-proyecto
+    ruta: /ruta/absoluta/local/al/proyecto/destino
+    descripcion: Qué es, de dónde viene, qué lo hace distinto de la plantilla.
