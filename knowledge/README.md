@@ -3,7 +3,7 @@
 Un archivo por librería/framework (`pydantic-settings.md`, `fastapi.md`,
 `sqlalchemy-2.0.md`, etc.), acumulando **patrones de uso verificados contra
 documentación/comportamiento real**, no contra lo que un modelo "recuerda" de
-su entrenamiento. Existe porque el 2026-08-21, migrando `web-portal-coas`, el
+su entrenamiento. Existe porque el 2026-08-21, migrando un backend real, el
 Executor (y el propio Planner) generó varios patrones de librería plausibles
 pero inexistentes o incorrectos (`Settings(env_file=...)` en vez de
 `Settings(_env_file=...)`, `from fastapi import HTTPBearer` en vez de
@@ -86,13 +86,12 @@ pasar por el filtro del Planner.
 ```markdown
 ## <qué hace / qué resuelve>
 
-**Verificado:** <fecha>, <librería>==<versión> (ver requirements.txt del
-proyecto donde se encontró para la versión exacta)
+**Verificado:** <fecha>, <librería>==<versión>
 **Patrón correcto:**
 \`\`\`python
 codigo_real_verificado()
 \`\`\`
 **Patrón incorrecto visto en la práctica:** `codigo_que_alucino_el_modelo()`
 — por qué está mal / qué excepción tira.
-**Encontrado en:** <proyecto>, <item_id>, <fecha>.
+**Encontrado en:** <fecha>, migrando <tipo de proyecto/contexto genérico>.
 ```

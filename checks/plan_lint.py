@@ -14,19 +14,19 @@ criterios_aceptacion, interfaz) con regex — SÍ puede tener falsos positivos
 parecida) — por eso es una herramienta de apoyo que el Planner corre a mano
 antes de dar un plan por terminado, no un gate automático.
 
-Detecta cinco clases de bug real ya vistas migrando web-portal-coas/Web_coas
-(ver Harness/handoff.md y Pendientes.md, "Dividir items grandes..."):
+Detecta cinco clases de bug real ya vistas en proyectos migrados con este
+harness (ver Harness/handoff.md y Pendientes.md, "Dividir items grandes..."):
 
 1. **Dependencia no declarada.** detalle_tecnico/criterios_aceptacion/
    interfaz de un item menciona el ID de otro item, pero ese id no está en
-   depende_de — ej. COAS-AUTH-003 necesitaba get_db (de COAS-CORE-002) sin
-   tenerlo en depende_de, COAS-REP-005 repitió el mismo import roto porque
-   depende_de no incluía COAS-CORE-002.
+   depende_de — ej. un item de auth necesitaba get_db (de un item de DB base)
+   sin tenerlo en depende_de, y otro item repitió el mismo import roto porque
+   depende_de no incluía el item de DB base.
 2. **Import huérfano o dependencia de módulo no declarada.** detalle_tecnico
    de un item menciona un import "app.x.y.z" cuyo módulo (app.x.y) no lo
    genera NINGÚN item del plan (import huérfano — típicamente falta un item
-   de infraestructura, ver COAS-CORE-002/003 "infraestructura que nadie
-   pidió explícitamente"), o lo genera un item que no está en depende_de
+   de infraestructura, ver "infraestructura que nadie pidió explícitamente"
+   en handoff.md), o lo genera un item que no está en depende_de
    (mismo bug que el punto 1, mirado desde el import en vez del ID citado
    en prosa).
 3. **Item muy por encima de la mediana del propio plan** (archivos_destino
@@ -35,7 +35,7 @@ Detecta cinco clases de bug real ya vistas migrando web-portal-coas/Web_coas
    arbitrario) — se compara contra la mediana de ESTE plan, no un umbral
    universal. Señal débil a propósito: el tamaño solo no predice bien la
    oscilación (ver punto 4), pero vale la pena marcarlo igual. Además del
-   umbral relativo, un piso absoluto (calibrado contra Tesorería,
+   umbral relativo, un piso absoluto (calibrado con datos reales,
    2026-08-30): un plan con muchos items triviales de 1 archivo empuja la
    mediana muy abajo, y sin piso el umbral relativo marcaba items de 3-4
    archivos que en términos absolutos son un tamaño normal (14 de 15
@@ -43,7 +43,7 @@ Detecta cinco clases de bug real ya vistas migrando web-portal-coas/Web_coas
 4. **Contrato de retorno sin claves exactas.** criterios_aceptacion exige
    "exactamente las claves X/Y" pero detalle_tecnico nunca menciona esas
    claves literalmente — la causa raíz real más repetida de oscilación
-   (BE-REP-003, COAS-REP-002, OSC-004): Executor no tiene de dónde sacar el
+   (visto en varios proyectos reales): Executor no tiene de dónde sacar el
    nombre exacto y termina inventando uno plausible pero distinto.
 5. **Ambigüedad en prosa**: elipsis dentro de código citado (ej.
    `.join(Tabla, ...)`, el bug real de vca_com en venta_repository.py) o
@@ -63,14 +63,14 @@ _MINIMO_ITEMS_PARA_MEDIANA = 5
 # Piso absoluto además del relativo -- sin esto, un plan con muchos items
 # triviales de 1 archivo empuja la mediana tan abajo que 3-4 archivos (un
 # tamaño normal en cualquier otro plan) dispara el umbral relativo solo.
-# Calibrado contra Tesorería (2026-08-30): 14/15 avisos de tamaño eran
+# Calibrado con datos reales (2026-08-30): 14/15 avisos de tamaño eran
 # justo este falso positivo.
 _PISO_ABSOLUTO_ARCHIVOS = 4
 _PISO_ABSOLUTO_CRITERIOS = 4
 
 _PATRON_CLAVES_EXACTAS = re.compile(
-    # (?!que\b) -- falso positivo real encontrado corriendo contra
-    # Tesorería (2026-08-30, ya migrado y completado): "debe devolver
+    # (?!que\b) -- falso positivo real encontrado corriendo contra un
+    # plan real ya migrado y completado (2026-08-30): "debe devolver
     # EXACTAMENTE las claves que lee ConsultarIdService.consultar()" no es
     # una lista literal, es una referencia a OTRO símbolo -- sin el
     # lookahead, _claves_citadas extraía "que"/"lee" como si fueran los
@@ -88,7 +88,7 @@ _FRASES_AMBIGUAS = (
 
 def _modulos_generados(items: list[dict]) -> dict[str, str]:
     """
-    { "app.core.config": "TES-CORE-001", ... } — mapea cada módulo Python
+    { "app.core.config": "CORE-001", ... } — mapea cada módulo Python
     (derivado de un archivo .py en archivos_destino, bajo una carpeta "app/")
     al id del item que lo genera.
     """
@@ -183,8 +183,8 @@ def _avisos_claves_sin_mencion(item: dict) -> list[str]:
     """
     criterios_aceptacion exige "exactamente las claves X/Y" -- si
     detalle_tecnico nunca menciona esa clave literalmente, Executor no
-    tiene de dónde sacar el nombre exacto (mismo patrón real que
-    BE-REP-003/COAS-REP-002/OSC-004, ver docstring del módulo).
+    tiene de dónde sacar el nombre exacto (mismo patrón real visto en
+    varios proyectos, ver docstring del módulo).
     """
     detalle = item.get("detalle_tecnico", "")
     avisos = []

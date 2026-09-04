@@ -27,6 +27,6 @@ correctamente). Mezclar naive y aware en el mismo proyecto es una fuente
 clásica de bugs de comparación de fechas (`TypeError: can't compare
 offset-naive and offset-aware datetimes`).
 
-**Encontrado en:** `web-portal-coas-migrado`, `autenticacion_repository.py`
+**Encontrado en:** 2026-08-21, en un repository de autenticación
 (`registrar_auditoria_login`/`_login_admin`/`_cambio_clave`), revisión manual
-de calidad de código post-plan, 2026-08-21.
+de calidad de código post-plan.

@@ -37,6 +37,6 @@ También evitar `datetime.utcnow()` (naive, deprecado) — usar
 `datetime.now(timezone.utc)`, ya cubierto como regla incondicional en el
 `SYSTEM_PROMPT` de Executor.
 
-**Encontrado en:** `tesoreria-migrado`, `TES-AUTH-001`, 2026-08-26 — primera
-vez que este proyecto necesita emitir JWT (reemplaza sesión de servidor de
-Flask-Login del monolito origen).
+**Encontrado en:** 2026-08-26 — primera vez que este proyecto necesita
+emitir JWT (reemplaza sesión de servidor de Flask-Login del monolito
+origen).

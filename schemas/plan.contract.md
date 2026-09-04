@@ -76,7 +76,7 @@ de cada una al redactar cada item por separado. Nos faltó hacer esto la
 primera vez que probamos contra un monolito real y un item violó una regla
 `always_on` de `backend-architecture.md` (el `commit()` en la capa
 equivocada) sin que ningún criterio lo detectara — ver `handoff.md`,
-sección "Primera prueba real".
+sección "Primeras pruebas reales".
 
 **Antes de escribir `detalle_tecnico` de un item que usa una librería/
 dependencia no trivial (más allá de built-ins de Python o del framework ya
@@ -89,8 +89,8 @@ del modelo está actualizado, y agrega/actualiza la entrada correspondiente.
 El patrón verificado se vuelca directo acá o en el `detalle_tecnico` del
 item — **Executor no lee `Harness/knowledge/` directo**, mantiene su
 contexto mínimo a propósito (ver "Principio general"); el Planner es quien
-filtra y resume. Existe porque el 2026-08-21, migrando `web-portal-coas`
-(replanificación completa), tanto Executor como el propio Planner generaron
+filtra y resume. Existe porque el 2026-08-21, en una replanificación completa
+de un backend real, tanto Executor como el propio Planner generaron
 varios patrones de librería plausibles pero incorrectos (`pydantic-settings`,
 `fastapi.security`, SQLAlchemy 2.0 — ver `knowledge/` para el detalle) —
 mismo tipo de riesgo que ya se había visto con imports internos alucinados
@@ -105,8 +105,9 @@ cada campo de ahí — no inventarlo ni adivinarlo por convención.** El tipo
 resultante se declara en `decisiones_globales.schema_bd_origen` (referencia
 a la fuente) y se propaga como contrato obligatorio en la `interfaz` del
 item que define el modelo (import literal + tipo explícito, mismo mecanismo
-ya usado para `RowSchema` en items de repository, ver `Sexta prueba real` en
-`handoff.md`) — todo item dependiente que toque ese campo hereda ese tipo,
+ya usado para `RowSchema` en items de repository, ver `handoff.md`, sección
+"Row schemas Pydantic reemplazan `list[dict]` en queries con JOIN") — todo
+item dependiente que toque ese campo hereda ese tipo,
 no lo vuelve a decidir. Esto no reemplaza la fase de smoke test/tests: sigue
 haciendo falta un test real para casos borde de formato (ej. un dígito
 verificador que puede ser una letra) — lo que sí evita es que una función
@@ -162,8 +163,8 @@ No alcanza con `{ "nombre": "get_current_user" }` — hace falta
 completa, copiable tal cual a un `from ... import ...`). Esto incluye
 módulos enteros pensados para que otro item los monte/importe (ej. un
 router), no solo funciones sueltas — usá una entrada tipo `modulo_router` o
-similar con su `import` exacto. Motivo, con evidencia real: en la migración
-de `web-portal-coas`, **todos** los items que necesitaban `get_current_user`
+similar con su `import` exacto. Motivo, con evidencia real: en una migración
+real, **todos** los items que necesitaban `get_current_user`
 (que sí tenía `import` literal en la `interfaz` de su dependencia) lo
 importaron bien; los que necesitaban `DomainError` (mencionado solo en
 prosa en `detalle_tecnico`, sin `import` literal en ninguna `interfaz`
@@ -176,7 +177,7 @@ veces no es la que el proyecto usa.
 que estar en `depende_de`.** Las dependencias no son transitivas: un item
 solo recibe la `interfaz` de los ids que él mismo lista en `depende_de`, no
 la de las dependencias de sus dependencias. Citar un item en prosa
-("heredá de DomainError, definido en COAS-CORE-001") sin ponerlo en
+("heredá de DomainError, definido en el item de configuración base") sin ponerlo en
 `depende_de` significa que ese item nunca llega al contexto de Executor —
 va a intentar cumplir la instrucción igual, adivinando de dónde importar.
 
@@ -231,8 +232,8 @@ arreglar un bug encontrado después de la aprobación — la regeneración
 completa del item (`archivos_destino` entero, no un parche) no tiene por
 qué preservar la misma forma exacta (nombres de clases/funciones) que la
 versión anterior, aunque `interfaz` sea la misma en el papel. Nada fuerza
-esa estabilidad hoy. Encontrado en la práctica: al re-arreglar
-`COAS-AUTH-001` de `web-portal-coas`, `usuario_repository.py` pasó de
+esa estabilidad hoy. Encontrado en la práctica: al re-arreglar un item de
+login real, `usuario_repository.py` pasó de
 exponer una clase `UsuarioRepository` a funciones sueltas — rompiendo a
 `comercio.py`, que ya estaba `completado` e importaba la clase vieja.
 
@@ -340,7 +341,7 @@ escriba nada de antemano. Implementado en `frontend_check.py`.
   completo esté regenerado.
 - **Los componentes standalone de Angular no traen nada implícito —
   decirlo explícitamente en `decisiones_globales`.** Evidencia real
-  (2026-08-20, `web-portal-coas`): 6 de 9 items frontend fallaron la
+  (2026-08-20): 6 de 9 items frontend fallaron la
   primera vez por usar `routerLink`, `*ngIf`, `*ngFor`, etc. en el
   template sin listarlos en el array `imports` del `@Component` — error
   de compilación real (`NG8002`/`NG8103`), no ceguera de contexto ni
@@ -352,7 +353,7 @@ escriba nada de antemano. Implementado en `frontend_check.py`.
 
 Mismo principio que Frontend check, pero para Dockerfiles/docker-compose.yml
 — corre siempre, no depende de un campo opcional. Implementado en
-`docker_check.py`. Motivado por Tesorería (2026-08-27): el DAL necesita el
+`docker_check.py`. Motivado por un caso real (2026-08-27): un DAL necesita el
 driver ODBC de IBM para AS400 instalado vía `apt` (`ibm-iaccess`), no `pip`
 — Compliance es un LLM que solo lee texto (no ejecuta nada, ver
 `agents/compliance.py`), así que no puede detectar que el paquete instaló
@@ -388,7 +389,7 @@ hasta que alguien lo prueba en runtime.
 
 ### Archivos raíz/entry-point — invisibles a `ng build`/`format_check`/smoke test
 
-**Contexto (2026-08-23):** en `web-portal-coas-migrado`, `app.component.html`
+**Contexto (2026-08-23):** en un proyecto real, `app.component.html`
 quedó con el scaffold completo de `ng new` (logo de Angular, texto de
 bienvenida, links de demo) durante las 4 tandas de items frontend — ningún
 item tuvo nunca `app.component.html`/`.ts` en su `archivos_destino`. Felipe lo
@@ -397,8 +398,8 @@ pantalla real, debajo de ~250px de hero de demo). Ni `ng build` (compila
 perfecto, es HTML/TS válido), ni `format_check.py` (no hay import roto), ni
 Compliance (nunca evaluó un item que tocara ese archivo) lo detectaron.
 
-**Por qué es un caso distinto del patrón ya conocido** (`COAS-CORE-001/002/003`
-del backend, "infraestructura que nadie pidió explícitamente", ver
+**Por qué es un caso distinto del patrón ya conocido** (items de configuración
+base del backend, "infraestructura que nadie pidió explícitamente", ver
 `decisiones_globales`/sección de arriba): esos casos SÍ se detectaban solos,
 porque otro item importaba un símbolo de ese archivo y el import roto
 disparaba `format_check.py`/pytest de inmediato. Un archivo raíz/entry-point
@@ -410,19 +411,19 @@ Es un nodo terminal del grafo de dependencias, no uno intermedio.
 **Regla para el Planner:** para cada capa que se bootstrapea con el `new`/
 scaffold de un framework (`ng new`, `create-react-app`, etc.), declarar
 explícito un item de limpieza del shell raíz (`ticket_id: null`, mismo
-tratamiento que `COAS-CORE-001/002/003`) apenas se bootstrapea el proyecto,
-no esperar a que aparezca al planificar las pantallas reales — el criterio de
-aceptación debe verificar negativamente contra el texto/markup conocido del
-scaffold (ej. "no contiene el texto 'Congratulations'"), no solo que compile.
-Ver `COAS-FE-CORE-005` en `web-portal-coas-migrado` como ejemplo aplicado.
+tratamiento que los items de configuración base) apenas se bootstrapea el
+proyecto, no esperar a que aparezca al planificar las pantallas reales — el
+criterio de aceptación debe verificar negativamente contra el texto/markup
+conocido del scaffold (ej. "no contiene el texto 'Congratulations'"), no solo
+que compile. Ver `handoff.md` para un ejemplo real aplicado.
 
 ### Items "ensambladores" van al FINAL, dependen de TODO lo que montan — vale igual para rutas Angular que para routers FastAPI
 
-**Contexto (2026-08-27, migración Tesorería):** `app.routes.ts` (el
+**Contexto (2026-08-27):** `app.routes.ts` (el
 equivalente Angular de `main.py` montando routers) se planificó como item
-temprano de `FE-CORE-*`, dependiendo solo de los servicios base — igual
+temprano de configuración base, dependiendo solo de los servicios base — igual
 error, en el otro stack, que ya se había cometido y corregido con
-`main.py`/`COAS-CORE-003` (ver "Contexto ampliado de Compliance" más abajo).
+`main.py` en un backend real (ver "Contexto ampliado de Compliance" más abajo).
 Executor se bloqueó primero (no tenía el import path de los 5 componentes
 de página) y, forzado sin esa info, adivinó una carpeta plural
 (`@app/pages/...`) que no existía, escribiendo un `app.routes.ts` roto.
@@ -431,8 +432,8 @@ cualquier item (no solo del que se está validando), ese único archivo roto
 bloqueó en cascada a TODOS los demás items frontend en curso — cada uno
 detectó correctamente "no es mi culpa, no toco archivos ajenos" y quedó
 `### BLOQUEADO`, pero igual costó una llamada al modelo por cada uno antes
-de frenar (mismo patrón ya visto en Web_coas, `FE-REP-005` rompiendo `ng
-build` para 3 items ajenos — la causa de fondo ahí era una respuesta vacía
+de frenar (mismo patrón ya visto en otro proyecto real, un item de reporte
+rompiendo `ng build` para 3 items ajenos — la causa de fondo ahí era una respuesta vacía
 del motor, no un problema de planificación, pero el efecto cascada es
 idéntico).
 
@@ -466,7 +467,7 @@ cascada pasan limpio sin necesidad de regenerar su propio código.
 **Contexto (2026-08-23):** un `detalle_tecnico` de revisión que decía "SCSS
 sin cambios respecto a la ronda anterior" (en vez de pegar el archivo
 completo) resultó en que 3 componentes con la MISMA hoja de estilos
-compartida (`.filtro-card`/`.acciones`, ver reportes de `web-portal-coas`)
+compartida (`.filtro-card`/`.acciones`, en un módulo real de reportes)
 terminaran con 3 valores distintos de `align-items` y dos de los tres sin
 una regla que sí estaba pedida (`height: 56px` en los botones) — cada
 regeneración reescribía su propia aproximación del SCSS en vez de preservar
@@ -486,12 +487,12 @@ es sacarlo de `archivos_destino` del item (ownership acotado a lo que
 realmente cambia), no dejarlo en la lista con la instrucción de "no
 tocarlo" — eso le pide a Executor regenerar un archivo sin dárselo, y
 correctamente responde `### BLOQUEADO` en vez de inventarlo (confirmado en
-vivo, `COAS-FE-REP-002`).
+vivo en un item de reporte frontend real).
 
 ### Revisiones sucesivas de un item: `archivos_destino` acumula, no se resetea
 
-**Contexto (2026-08-24):** corriendo `web-portal-coas-migrado` completo desde
-cero por primera vez (`migrado_pruebas`, ver `handoff.md`), 8 de 33 items
+**Contexto (2026-08-24):** corriendo un proyecto real completo desde
+cero por primera vez (ver `handoff.md`), 8 de 33 items
 fallaron por el mismo motivo: un archivo que el proyecto real ya tenía en
 disco (`autenticacion.models.ts`, `menu-cliente.component.ts`,
 `saldo_service.py`/`saldo_response.py`, `factura_response.py`, etc.) no
@@ -620,7 +621,7 @@ escriba fuera de su directorio permitido.
 
 `interfaz` en `plan.json` es una **predicción** que el Planner escribe antes
 de que el código exista. En la práctica puede quedar incompleta — evidencia
-real: migrando `web-portal-coas`, un item necesitaba `DomainError` (citado
+real: en una migración real, un item necesitaba `DomainError` (citado
 solo en prosa en `detalle_tecnico`, sin `import` literal en ninguna
 `interfaz` alcanzable) y el modelo adivinó un módulo plausible pero
 inexistente (ver más arriba, "todos los items que necesitaban
@@ -654,10 +655,10 @@ nuevo), qué símbolos quedaron pensados para que otro item los reuse. Ver
   vieja podía convivir para siempre al lado de la real. Motivó esto: un
   router falso predicho que Executor nunca implementó bajo ese nombre
   sobrevivía igual en la unión, quemando 3 reintentos + 1 escalado a
-  `executor_senior` (`DAL-AUTH-003`/`DAL-CORE-002`, ver `handoff.md`). La
-  poda es contra el código, no contra "si la real lo menciona" — por eso no
-  reabre el caso `BE-AUTH-004` de arriba (símbolo real que la interfaz real
-  no repite sigue sobreviviendo).
+  `executor_senior` (ver `handoff.md`). La
+  poda es contra el código, no contra "si la real lo menciona" — un símbolo
+  real que la interfaz real no vuelve a mencionar explícitamente sigue
+  sobreviviendo igual, la poda no lo afecta.
 - **`plan.json` sigue inmutable.** Esto vive aparte, nunca se escribe
   encima de lo que dejó el Planner.
 
@@ -675,14 +676,14 @@ caso a mano y se resolvió en `agents/compliance.py`:
 - **`archivos_infraestructura_compartida`**: contenido completo de los
   `archivos_destino` de todo item con `ticket_id: null` — la misma marca
   que el Planner ya usa para "esto es infraestructura, no negocio" (ver
-  `COAS-CORE-001/002/003`). Siempre visible para Compliance, sin importar
+  ejemplos de items de configuración base más arriba). Siempre visible para Compliance, sin importar
   qué item se esté validando ni si está en su `depende_de` — infraestructura
   compartida se trata como ambiente, no como dependencia declarada
   item por item (declararla en cada item sería absurdamente repetitivo).
 - **`archivos_reales_de_dependencias`**: contenido completo (no solo
   `interfaz`) de los items en `depende_de` del item en validación. Pensado
-  sobre todo para items "ensambladores" (ej. `COAS-CORE-003`, que depende
-  de todo lo que monta) — su `interfaz` nunca fue diseñada para alcanzar
+  sobre todo para items "ensambladores" (ej. un `main.py` que monta todos
+  los routers, que depende de todo lo que monta) — su `interfaz` nunca fue diseñada para alcanzar
   a verificar el contenido real de una docena de dependencias.
 - **`arbol_archivos_proyecto`**: listado (solo rutas, sin contenido) de
   todo el proyecto — orienta sobre qué existe, no reemplaza lo de arriba.
@@ -697,7 +698,7 @@ caso a mano y se resolvió en `agents/compliance.py`:
   código. Compliance solo lee y opina, un contexto más grande ahí es
   más seguro.
 
-**Evidencia de que funcionó:** re-validando `COAS-CORE-003` con este
+**Evidencia de que funcionó:** re-validando un item ensamblador real con este
 contexto, Compliance verificó correctamente 3 de 4 rutas citando el router
 real y su prefijo exacto — algo que antes rechazaba sin poder confirmar.
 El único rechazo restante ese día fue un error aritmético del modelo (dijo
@@ -714,7 +715,7 @@ justifica el cambio todavía por sí sola.
 ### `chequeos_deterministicos_previos` — lo que ya se verificó mecánicamente, no algo a re-derivar
 
 **Contexto (2026-08-23):** un rechazo falso más, de otra causa — Compliance
-rechazó `COAS-FE-CORE-006` (frontend) por un único criterio ("el proyecto
+rechazó un item frontend por un único criterio ("el proyecto
 compila con ng build") con el motivo "no tengo evidencia, no doy el
 beneficio de la duda", pese a que `frontend_check.py` (el `ng build` real)
 YA había corrido y pasado automáticamente antes de que Compliance se
@@ -741,11 +742,10 @@ código del proyecto.
 `orchestrator.py`) se recalcula desde cero en cada llamada y el historial
 de rechazos de un item vive solo en memoria dentro de `loop()`
 (`historial_feedback`, un dict local) — si el proceso se corta a mitad de
-una corrida (ya documentado varias veces, ver `handoff.md`, "Nota
-operativa" de la Décima prueba real), ese historial se pierde con él y
-`executor_senior` termina viendo solo lo que sobrevivió desde el último
-reinicio. Además, en el caso de oscilación más severo visto hasta ahora
-(`COAS-REP-003`, ver `handoff.md`, Quinta prueba real), el historial en
+una corrida (ya documentado varias veces, ver `handoff.md`), ese historial
+se pierde con él y `executor_senior` termina viendo solo lo que sobrevivió
+desde el último reinicio. Además, en el caso de oscilación más severo visto
+hasta ahora (ver `handoff.md`), el historial en
 prosa no bastó — hizo falta que un humano armara a mano una tabla de
 hechos verificados contra el código real para que `executor_senior`
 convergiera al primer intento. Esa tabla nunca tuvo un lugar formal donde
@@ -858,9 +858,9 @@ nada se rompa (mismo criterio que ya rige `--sin-confirmar` en el resto de
 `historial_feedback` (dict en memoria, se pierde si el proceso se corta) —
 lee el mismo `.harness/logs/tickets/<item_id>.md`, que para este punto ya
 tiene el historial completo de todos los intentos previos. Cierra el gap
-real de la Décima prueba real (`handoff.md`, "Nota operativa"): un corte
-de proceso a mitad de corrida ya no pierde el historial de rechazos, sigue
-en disco.
+real ya documentado en `handoff.md` ("Ticket de reintento — feedback
+persistido a archivo"): un corte de proceso a mitad de corrida ya no pierde
+el historial de rechazos, sigue en disco.
 
 **Qué NO cambia:** `reporte_fallas.md` sigue existiendo (bitácora legible
 de alto nivel, agregada entre todos los items), pero en vez de embeber el
@@ -946,15 +946,15 @@ proyecto (no investiga, no recuerda de memoria de entrenamiento).
 
 ## Documentos de proyecto que crecen durante la migración — nunca un item de `plan.json`
 
-**Contexto (2026-08-30):** `oms-srv-dal-delivery-configuration` modeló
+**Contexto (2026-08-30):** un proyecto real modeló
 `fixAplicados.md`/`recomendaciones-tecnicas.md` como items normales —
 Executor los generaba una sola vez, con el contenido completo ya decidido
 de antemano en `detalle_tecnico`. Error real: la intención de Felipe era
 que fueran archivos que se completan **a medida que aparecen hallazgos
 reales durante la migración** (un fix de comportamiento aplicado, un
 riesgo detectado), no un entregable cerrado en una sola pasada. El mismo
-patrón ya existía sin formalizar — `deuda_negocio.md` en
-`web-portal-coas-migrado` (decisiones de negocio no técnicas, en lenguaje
+patrón ya existía sin formalizar — `deuda_negocio.md` en un proyecto
+anterior (decisiones de negocio no técnicas, en lenguaje
 simple, para que el cliente decida) nunca se escribió acá, y por eso el
 patrón se perdió y se reinventó mal en el proyecto siguiente.
 
@@ -981,8 +981,8 @@ ejecutan otros items?" — si la respuesta es sí, no es un item.
 **Instrucción fija desde ahora (2026-08-30, pedido explícito de Felipe):**
 todo proyecto nuevo arranca con `<deployable>/docs/fixAplicados.md` y
 `<deployable>/docs/recomendaciones-tecnicas.md` creados desde el inicio de
-la planificación — mismo directorio y mismos dos nombres que
-`oms-srv-dal-delivery-configuration` (`dal/docs/`), no una convención a
+la planificación — mismo directorio y mismos dos nombres ya usados en un
+proyecto real (`dal/docs/`), no una convención a
 inventar de nuevo por proyecto. `<deployable>` es la carpeta del deployable
 relevante (`dal/`, `backend/`, o la raíz del proyecto si es un solo
 deployable). Crearlos vacíos (con el encabezado + la nota de "se completa
@@ -1015,7 +1015,7 @@ antes de llamar a Executor/Compliance, no llega a ejecutarse.
   separados o repensar la granularidad — no compartir destino. Un item SÍ
   puede *importar* código de un archivo que otro item (una dependencia) ya
   generó, eso es reuso normal, distinto de escribir sobre el mismo archivo.
-  Encontrado en la práctica migrando `web-portal-coas` — ver `handoff.md`.
+  Encontrado en la práctica en una migración real — ver `handoff.md`.
 
 ## Ver también
 

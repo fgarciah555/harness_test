@@ -149,7 +149,7 @@ tooltips) va en **español neutro**, nunca voseo rioplatense (`sos`, `tenés`,
 `podés`, `hacé`, `dale`, `acá` sin tilde). Forma neutra sin pronombre
 explícito ("Ingresa aquí") o tercera persona — nunca conjugación voseante.
 
-**Bug real:** el login de `Web_coas` (cliente en Chile) generó `¿Sos
+**Bug real:** un login real (cliente en Chile) generó `¿Sos
 administrador? Ingresa aca` — corregido a `¿Eres administrador? Ingresa
 aquí`. Ni `ng build` ni tests lo detectan (texto plano en un template),
 solo se ve probando la UI real.

@@ -150,10 +150,10 @@ def test_avisos_tamano_relativo_marca_item_muy_por_encima_de_la_mediana():
 
 
 def test_avisos_tamano_relativo_piso_absoluto_evita_falso_positivo_con_mediana_baja():
-    # Reproduce el caso real de Tesorería (2026-08-30): muchos items
-    # triviales de 1 archivo empujan la mediana tan abajo que un item de 3
-    # archivos (tamaño normal en cualquier plan) dispara el umbral relativo
-    # solo -- el piso absoluto lo suprime.
+    # Reproduce un caso real (2026-08-30): muchos items triviales de 1
+    # archivo empujan la mediana tan abajo que un item de 3 archivos
+    # (tamaño normal en cualquier plan) dispara el umbral relativo solo --
+    # el piso absoluto lo suprime.
     items = [_item_minimo(f"P-{i}", archivos_destino=["a.py"], criterios_aceptacion=["c1", "c2"]) for i in range(10)]
     items.append(_item_minimo(
         "P-NORMAL",
@@ -183,8 +183,8 @@ def test_claves_citadas_extrae_identificadores_sin_conectores():
 
 
 def test_claves_citadas_no_extrae_nada_si_es_una_referencia_a_otro_simbolo():
-    # Falso positivo real encontrado corriendo plan_lint contra Tesorería
-    # (ya migrado y completado, 2026-08-30): "las claves que lee X()" es una
+    # Falso positivo real encontrado corriendo plan_lint contra un proyecto
+    # ya migrado y completado (2026-08-30): "las claves que lee X()" es una
     # referencia a otro símbolo, no una lista literal -- sin este fix,
     # _claves_citadas extraía "que"/"lee" como si fueran nombres de clave.
     texto = "armarDatos() debe devolver EXACTAMENTE las claves que lee ConsultarIdService.consultar()"
@@ -195,7 +195,7 @@ def test_claves_citadas_no_extrae_nada_si_es_una_referencia_a_otro_simbolo():
 def test_lintear_plan_detecta_clave_exacta_no_mencionada_en_detalle_tecnico():
     plan = {"items": [
         _item_minimo(
-            "OSC-004",
+            "ITEM-004",
             detalle_tecnico="devuelve un diccionario con el monto antes del bono y el monto después del bono",
             criterios_aceptacion=[
                 "generar_reporte devuelve un dict con EXACTAMENTE las claves comision_base y comision_final",
@@ -203,14 +203,14 @@ def test_lintear_plan_detecta_clave_exacta_no_mencionada_en_detalle_tecnico():
         ),
     ]}
     avisos = lintear_plan(plan)
-    assert any("comision_base" in a and "comision_final" in a and "OSC-004" in a for a in avisos)
-    print("OK: lintear_plan detecta un criterio que exige claves exactas ausentes de detalle_tecnico (bug real de OSC-004)")
+    assert any("comision_base" in a and "comision_final" in a and "ITEM-004" in a for a in avisos)
+    print("OK: lintear_plan detecta un criterio que exige claves exactas ausentes de detalle_tecnico (bug real de ITEM-004)")
 
 
 def test_lintear_plan_no_marca_clave_exacta_que_si_esta_en_detalle_tecnico():
     plan = {"items": [
         _item_minimo(
-            "OSC-004",
+            "ITEM-004",
             detalle_tecnico="devuelve un dict con comision_base (sin bono) y comision_final (con bono aplicado)",
             criterios_aceptacion=[
                 "generar_reporte devuelve un dict con EXACTAMENTE las claves comision_base y comision_final",

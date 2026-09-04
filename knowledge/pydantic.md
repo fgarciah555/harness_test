@@ -2,9 +2,7 @@
 
 ## `populate_by_name=True` SOLO no aplica ningún casing — necesita `alias_generator` junto
 
-**Verificado:** 2026-08-26, pydantic==2.13.4 (ver `dal/requirements.txt`/
-`backend/requirements.txt` de `Web_coas/web-portal-coas-destino` para la
-versión exacta del proyecto donde se encontró).
+**Verificado:** 2026-08-26, pydantic==2.13.4.
 
 **Patrón correcto:**
 ```python
@@ -47,17 +45,16 @@ el JSON serializado real (`model_dump(by_alias=True)` o pegándole al
 endpoint), que es exactamente lo que un criterio de Compliance débil
 ("el schema tiene `populate_by_name=True`") no fuerza a verificar.
 
-**Encontrado en:** `Web_coas/web-portal-coas-destino`, items `BE-AUTH-002`
-(`UsuarioActual`, GET `/me`) y `BE-REP-003` (`DepositosResumenResponse`,
-`SaldoMensualResponse`), 2026-08-26 — en los dos, el motor local (LM Studio)
-falló 3 veces seguidas agregando el `alias_generator` pese a una instrucción
-explícita y literal en `detalle_tecnico`; se resolvió recién al escalar a
-`executor_senior` (DeepSeek). Ver `Harness/handoff.md`, sección "Undécima
-prueba real".
+**Encontrado en:** 2026-08-26, dos schemas de response distintos — en
+ambos, el motor local (LM Studio) falló 3 veces seguidas agregando el
+`alias_generator` pese a una instrucción explícita y literal en
+`detalle_tecnico`; se resolvió recién al escalar a `executor_senior`
+(DeepSeek).
 
 ## `@model_validator(mode="before")` vs `mode="after")` según cómo se instancia el modelo
 
-**Verificado:** 2026-08-24, pydantic==2.13.4 (ver requirements.txt de `reportePruebaStress` para la versión exacta del proyecto donde se encontró — vía `pydantic-settings`/`fastapi[standard]`, no está pinneado directo).
+**Verificado:** 2026-08-24, pydantic==2.13.4 (vía `pydantic-settings`/
+`fastapi[standard]`, no pinneado directo).
 
 **Patrón correcto:**
 ```python
@@ -112,14 +109,14 @@ es igual de válido y evita tener que acordarse de la distinción — más segur
 por defecto cuando no se sabe de antemano cómo se va a instanciar el modelo
 en cada call site.
 
-**Encontrado en:** `reportePruebaStress`, item `RPT-001` (revisión 3),
-2026-08-24 — Compliance (DeepSeek `deepseek-reasoner`) rechazó el primer
-intento citando el `AttributeError` real esperado antes de que se corriera
-contra datos reales; se corrigió cambiando `mode="before"` a `mode="after"`
-en los dos schemas que se instancian vía `model_validate(row)`
-(`ReporteJmeter`, `ReporteApigee`), y se verificó después contra la app real
-corriendo (Docker + Postgres) que el `None` proveniente de un `SUM()` sobre
-puros `NULL` en la base efectivamente sale `0` en el JSON final.
+**Encontrado en:** 2026-08-24, revisión 3 de un item de reportes — Compliance
+(DeepSeek `deepseek-reasoner`) rechazó el primer intento citando el
+`AttributeError` real esperado antes de que se corriera contra datos
+reales; se corrigió cambiando `mode="before"` a `mode="after"` en los dos
+schemas que se instancian vía `model_validate(row)`, y se verificó después
+contra la app real corriendo (Docker + Postgres) que el `None` proveniente
+de un `SUM()` sobre puros `NULL` en la base efectivamente sale `0` en el
+JSON final.
 
 ## Un modelo anidado en `List[EseModelo]` de otro modelo se REVALIDA al anidar — un `@model_validator` no idempotente se ejecuta más de una vez
 
@@ -169,18 +166,16 @@ sobre el valor ya final: `None -> 0` (0 sigue siendo 0 en cualquier
 revalidación) y `round(v, 2)` (`round(round(x,2),2) == round(x,2)`) son
 seguras de repetir cualquier cantidad de veces.
 
-**Encontrado en:** `reportePruebaStress`, item `RPT-001` (revisión 4),
-2026-08-24 — descubierto revisando visualmente el PDF generado por un
-proyecto consumidor (`generaReporteStress`): los tiempos de respuesta en la
-tabla de detalle por step salían ~1000x más chicos que el resumen del mismo
-servicio. Reproducido de forma aislada (construir el step suelto, después
-anidarlo) antes de escribir el fix, confirmando la causa exacta antes de
-tocar código.
+**Encontrado en:** 2026-08-24, revisión 4 del mismo item de reportes —
+descubierto revisando visualmente el PDF generado por un proyecto
+consumidor: los tiempos de respuesta en la tabla de detalle por step salían
+~1000x más chicos que el resumen del mismo servicio. Reproducido de forma
+aislada (construir el step suelto, después anidarlo) antes de escribir el
+fix, confirmando la causa exacta antes de tocar código.
 
 ## Un campo `str` NO coacciona un `Decimal`/numérico crudo devuelto por un driver de DB — validación falla en modo lax
 
-**Verificado:** 2026-09-01, pydantic==2.13.4 (ver `dal/requirements.txt`
-de `tesoreria-migrado` para la versión exacta).
+**Verificado:** 2026-09-01, pydantic==2.13.4.
 
 Un campo tipado `str` (o `str | None`) en un `BaseModel` es estricto para
 tipos numéricos incluso en el modo lax por defecto de pydantic v2: si se le
@@ -230,12 +225,11 @@ None`) en CUALQUIER campo de un repository que lee de un sistema externo,
 sin importar lo que diga el DDL — blinda contra un DDL desactualizado o
 mal leído, y no tiene costo real (el valor ya iba a mostrarse como texto).
 
-**Encontrado en:** `tesoreria-migrado`, `DAL-MRET-001`
-(`mret_repository.py`, `extraer_mret()`, campo `cod_boleta`), 2026-09-01 —
-bug real en producción del entregable. El DDL real (`docs/schema.md`,
-`mret.mae_orden.cod_boleta numeric NULL`) ya estaba documentado y
-disponible un día ANTES de escribirse `plan.json` — no fue un caso de DDL
-ausente, fue no cruzarlo campo por campo al tipar el `RowSchema`. Las
-funciones hermanas del mismo proyecto (`pth_repository.py`,
-`as400_repository.py`) no tuvieron este bug porque ya casteaban cada campo
-explícito, sin depender de si el tipo "parecía" texto.
+**Encontrado en:** 2026-09-01, un repository de un sistema externo de solo
+lectura (campo de código de boleta) — bug real en producción del
+entregable. El DDL real ya estaba documentado y disponible un día ANTES de
+escribirse `plan.json` — no fue un caso de DDL ausente, fue no cruzarlo
+campo por campo al tipar el `RowSchema`. Los repositories hermanos del
+mismo proyecto (otros dos sistemas externos de solo lectura) no tuvieron
+este bug porque ya casteaban cada campo explícito, sin depender de si el
+tipo "parecía" texto.

@@ -125,13 +125,13 @@ def construir_contexto(plan: dict, item_id: str, guard: AgentFileGuard | None = 
 
     Además de las dependencias declaradas en `depende_de`, siempre se
     incluye la interfaz de todo item de infraestructura compartida
-    (`ticket_id: null`, ej. COAS-CORE-001/002) -- mismo criterio que ya usa
+    (`ticket_id: null`, ej. items de settings/DB base) -- mismo criterio que ya usa
     Compliance para el contenido de archivos (ver
     agents/compliance.py::_archivos_infraestructura). Sin esto, un símbolo
     reusable de infraestructura (ej. get_db) solo le llega a un item si
     además se acordó de listar ese item de infra en depende_de -- visto en
-    vivo con COAS-AUTH-004, bloqueado por no saber de dónde importar get_db
-    aunque COAS-CORE-002 ya lo definía.
+    vivo con un item de auth bloqueado por no saber de dónde importar get_db
+    aunque el item de DB base ya lo definía.
 
     `guard`, si se pasa, permite completar la interfaz predicha del Planner
     con la interfaz REAL que cada dependencia reportó al terminar (ver

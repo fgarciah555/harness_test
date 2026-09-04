@@ -104,11 +104,11 @@ accesible, declarar el guard mock ahí desde el arranque (mismo criterio
 que ya se aplica a `interfaz`/`depende_de` — no dejarlo para un retrofit
 posterior). Ver `schemas/plan.contract.md`.
 
-**Encontrado en:** `tesoreria-migrado`, 2026-08-28 — pedido explícito de
+**Encontrado en:** un proyecto real, 2026-08-28 — pedido explícito de
 Felipe tras confirmar que el frontend se podía *servir* (nginx responde
-200) pero no *usar* de verdad (login necesita LDAP real, las pantallas de
-consulta necesitan OMS/MRET/PTH/AS400), ninguno accesible desde el entorno
-de desarrollo.
+200) pero no *usar* de verdad (login necesita LDAP real, otras pantallas
+necesitan sistemas externos de solo lectura), ninguno accesible desde el
+entorno de desarrollo.
 
 ## `.env` real vs. `.env.example` — nunca empaquetar el real
 
@@ -133,7 +133,7 @@ siempre `.env.example`. Mismo criterio que ya aplica un `.gitignore`
 normal — un empaquetado que no pasa por git tiene que replicar esa misma
 exclusión a mano, no asumirla gratis.
 
-**Encontrado en:** `tesoreria-migrado`, 2026-08-31 — pedido explícito de
+**Encontrado en:** un proyecto real, 2026-08-31 — pedido explícito de
 Felipe al pedir un script de empaquetado del proyecto para entregar a
 otro equipo: ningún `.env.example` existía todavía pese a que `dal/.env`/
 `backend/.env` ya tenían credenciales reales completas.
@@ -145,7 +145,7 @@ en cualquier proyecto migrado (mismo patrón dal/backend/frontend) — la planti
 UNA sola vez en `Harness/templates/start-local.sh` y `Harness/templates/empaquetar.sh`,
 se copia tal cual a la raíz de cada proyecto destino (`chmod +x`), y solo se adapta si
 ese proyecto tiene una necesidad genuinamente propia (ej. un chequeo de driver ODBC
-antes del arranque, como el AS400 de `tesoreria-migrado`) — agregada como pieza
+de AS400 antes del arranque) — agregada como pieza
 aparte, sin tocar la lógica genérica de trap/cleanup ni la exclusión de `.env` real
 del empaquetado. Cualquier fix a la lógica genérica (no a un chequeo project-specific)
 se aplica primero en `Harness/templates/` y se re-copia a los proyectos existentes —

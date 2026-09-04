@@ -2,13 +2,13 @@
 
 ## IN(...) con listas de enteros: valores literales en el SQL, NUNCA parámetros "?"
 
-**Verificado:** 2026-08-26, contra código real en producción
-(`tesoreria-origen/consultas.py::extraer_as400`) — medido explícitamente por
-Felipe contra el driver real: la misma consulta con `IN (?,?,?...)` (cada
-"?" negociando tipo con el servidor) tardaba **más de 10 minutos** con ~100
-valores; con los mismos valores escritos literalmente en el SQL, la
-respuesta es de milisegundos (confirmado además ejecutándola directo en
-"Run SQL Scripts" del lado AS/400).
+**Verificado:** 2026-08-26, contra código real en producción (una consulta
+de extracción contra AS/400) — medido explícitamente por Felipe contra el
+driver real: la misma consulta con `IN (?,?,?...)` (cada "?" negociando
+tipo con el servidor) tardaba **más de 10 minutos** con ~100 valores; con
+los mismos valores escritos literalmente en el SQL, la respuesta es de
+milisegundos (confirmado además ejecutándola directo en "Run SQL Scripts"
+del lado AS/400).
 
 **Patrón correcto:**
 ```python
@@ -40,19 +40,18 @@ interpolarse; nunca puede llegar texto ni SQL arbitrario al f-string).
 
 **Lotes:** listas largas (cientos de valores) se dividen en lotes de a lo
 más 200 (`TAMANO_LOTE`) antes de armar el `IN(...)`, para no generar un SQL
-gigante en un solo query — ver `_en_lotes` en el origen.
+gigante en un solo query.
 
 **Timeout real de la operación completa, no solo de conexión:** el driver
 no soporta fijar timeout de *consulta* (solo de conexión) — si el servidor
 se cuelga respondiendo, el proceso Python queda esperando indefinidamente.
 La única forma real de acotarlo es un timeout de wall-clock externo
 (`ThreadPoolExecutor` + `future.result(timeout=...)`), aceptando que el
-hilo interno puede quedar huérfano corriendo en segundo plano — ver
-`_con_timeout` en `tesoreria-origen/app.py`. Preservar este mecanismo tal
-cual, no asumir que `pyodbc.connect(..., timeout=N)` alcanza (ese timeout
-solo cubre el login/conexión inicial).
+hilo interno puede quedar huérfano corriendo en segundo plano. Preservar
+este mecanismo tal cual, no asumir que `pyodbc.connect(..., timeout=N)`
+alcanza (ese timeout solo cubre el login/conexión inicial).
 
-**Encontrado en:** `tesoreria-migrado`, `TES-DAL-AS400-001`, 2026-08-26.
+**Encontrado en:** 2026-08-26, un DAL sobre AS/400.
 
 ## Nombre real del driver ODBC registrado por `ibm-iaccess` (apt) — NO es el mismo que el de una instalación vieja "iSeries Access"
 
@@ -84,9 +83,9 @@ real corriendo el comando contra la imagen construida antes de fijar el
 default en `detalle_tecnico` — no copiarlo del `.env`/config de otro
 entorno.
 
-**Encontrado en:** `tesoreria-migrado`, `DEPLOY-DAL-001`, 2026-08-27 —
-`dal/app/core/config.py` (`DAL-CORE-001`) ya tenía `as400_driver =
-"{iSeries Access ODBC Driver}"` heredado (correcto) del monolito/host
-físico; el override para el contenedor Docker se resolvió con
-`AS400_DRIVER={IBM i Access ODBC Driver}` en el `environment` de
-`docker-compose.yml`, sin tocar el default de `config.py`.
+**Encontrado en:** 2026-08-27, deploy de un DAL sobre AS/400 — la
+configuración base ya tenía `as400_driver = "{iSeries Access ODBC Driver}"`
+heredado (correcto) del monolito/host físico; el override para el
+contenedor Docker se resolvió con `AS400_DRIVER={IBM i Access ODBC Driver}`
+en el `environment` de `docker-compose.yml`, sin tocar el default de la
+configuración base.

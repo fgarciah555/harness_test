@@ -98,7 +98,7 @@ def _leer_archivos(guard: AgentFileGuard, rutas: set[str]) -> dict[str, str]:
 def _archivos_infraestructura(plan: dict, item_id_actual: str, guard: AgentFileGuard) -> dict[str, str]:
     """
     Contenido completo de los archivos_destino de todo item con
-    `ticket_id: null` (infraestructura compartida, ej. COAS-CORE-001) --
+    `ticket_id: null` (infraestructura compartida, ej. un item de settings/DB base) --
     siempre visible para Compliance sin importar qué item se esté
     validando. Es la misma marca que el Planner ya usa hoy para distinguir
     infraestructura de items de negocio (ver schemas/plan.contract.md).
@@ -121,8 +121,8 @@ def _archivos_reales_de_dependencias(item: dict, plan: dict, guard: AgentFileGua
     Contenido completo (no solo `interfaz`) de los archivos_destino de los
     items listados en `depende_de` -- para items "ensambladores" que
     necesitan verificar el contenido real de lo que integran, no solo lo
-    que cada dependencia promete exponer. Ej. COAS-CORE-003 depende de
-    todos los routers de negocio para verificar que el ensamblado de
+    que cada dependencia promete exponer. Ej. un item ensamblador (main.py)
+    depende de todos los routers de negocio para verificar que el ensamblado de
     prefijos en main.py da las rutas finales correctas -- interfaz.endpoint
     no alcanza para eso, hace falta ver cada router de verdad.
     """
@@ -183,7 +183,7 @@ def _chequeos_previos(item: dict) -> str:
     item y pasaron -- ver orchestrator.py::validar_con_format_check. Sin
     este campo, Compliance no tiene forma de saberlo y puede rechazar por
     "no puedo confirmar que compila", algo que ya está confirmado (visto
-    en vivo, COAS-FE-CORE-006, 2026-08-23: rechazo falso por exactamente
+    en vivo en un item frontend real, 2026-08-23: rechazo falso por exactamente
     este motivo).
     """
     if item["tipo"] == "frontend":
@@ -272,7 +272,7 @@ def _calcular_veredicto(criterios_evaluados: list[dict]) -> str:
     individuales (misma regla que ya le pedimos al modelo en el system
     prompt: "aprobado solo si TODOS están cumplidos") -- no hace falta
     confiar en que el modelo la calcule bien él mismo. Encontrado en la
-    práctica (COAS-FE-CORE-001, 2026-08-20): el modelo marcó los 9
+    práctica (item frontend real, 2026-08-20): el modelo marcó los 9
     criterios cumplido=true pero escribió veredicto="rechazado" -- una
     inconsistencia interna que este cálculo elimina de raíz, gratis.
     """

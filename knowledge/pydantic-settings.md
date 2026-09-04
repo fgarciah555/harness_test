@@ -3,9 +3,8 @@
 ## Override de `env_file` en tiempo de instancia (para tests con `.env` alternativo)
 
 **Verificado:** 2026-08-21, `pydantic-settings` instalado vía `pip install
-pydantic-settings` sin fijar versión (ver `requirements.txt` de
-`web-portal-coas-migrado` para la versión exacta resuelta). Confirmado con un
-snippet ejecutado de verdad, no solo leído de documentación.
+pydantic-settings` sin fijar versión. Confirmado con un snippet ejecutado de
+verdad, no solo leído de documentación.
 
 **Patrón correcto:**
 ```python
@@ -34,7 +33,7 @@ rechazado por Compliance como no verificable/poco confiable aunque pasaba los
 tests existentes en ese momento (ver más abajo, los tests originales no
 cubrían este caso).
 
-**Encontrado en:** `web-portal-coas-migrado`, `COAS-CORE-001`, 2026-08-21 —
+**Encontrado en:** 2026-08-21, un item de configuración base —
 Compliance rechazó la mutación de clase compartida; el reintento generó la
 variante sin guion bajo, que además rompía en runtime (confirmado corriendo
 el smoke test); la tercera vuelta, con el patrón correcto ya documentado en
@@ -48,11 +47,11 @@ disciplina de Planner):** si `Settings` tiene campos sin default (ej.
 que solo hace `monkeypatch.setenv('DATABASE_URL', ...)` y llama
 `get_settings()` va a fallar con `ValidationError: secret_key Field
 required` — **no porque el código generado esté mal**, sino porque el propio
-test del Planner no seteó todas las variables obligatorias. Pasó 2 veces
-(`COAS-CORE-002`, `COAS-AUTH-003`) y en una tercera variante estructural
-(`COAS-CORE-003`, donde `main.py` evalúa `get_settings()` a nivel de módulo —
-ahí ni monkeypatch alcanza, porque el import pasa en tiempo de *collection*
-de pytest antes de que corra cualquier fixture; la solución ahí fue un
+test del Planner no seteó todas las variables obligatorias. Pasó 2 veces en
+items de configuración/login distintos, y en una tercera variante
+estructural donde `main.py` evalúa `get_settings()` a nivel de módulo — ahí
+ni monkeypatch alcanza, porque el import pasa en tiempo de *collection* de
+pytest antes de que corra cualquier fixture; la solución ahí fue un
 `backend/.env` real de desarrollo, no un monkeypatch).
 
 **Regla para el Planner al escribir `tests_requeridos` que toquen

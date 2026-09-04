@@ -9,7 +9,7 @@
 #
 # Al copiar esta plantilla a un proyecto destino: si ese proyecto necesita
 # un chequeo de pre-arranque específico (ej. driver ODBC de un sistema
-# externo, como el AS400 de Tesorería), agregarlo como una función aparte
+# externo, como AS400), agregarlo como una función aparte
 # ANTES de la sección "Lanzamiento de procesos" -- no tocar la lógica de
 # trap/cleanup, que es genérica.
 #

@@ -186,7 +186,7 @@ Antes de darlo por terminado, correr `python checks/plan_lint.py
 /ruta/al/proyecto-destino` — chequeo heurístico (regex, no LLM) que detecta
 `detalle_tecnico`/`interfaz` citando otro item sin tenerlo en `depende_de`, e
 imports `app.*` que ningún item genera o cuyo dueño no está declarado como
-dependencia (las dos clases de bug reales vistas migrando web-portal-coas,
+dependencia (las dos clases de bug reales vistas en migraciones reales,
 ver `handoff.md`), más items que por tamaño/ambigüedad son candidatos a
 dividir en items más chicos (ver `handoff.md`, "Dividir items grandes en
 sub-entregables"). A diferencia de `plan_validator.py` (estructural,
@@ -281,7 +281,7 @@ momento, sin ejecutar nada.
 python estado_proyectos.py
 
 # detalle item por item de uno puntual
-python estado_proyectos.py --detalle "Tesorería (backend+DAL+frontend)"
+python estado_proyectos.py --detalle "nombre-del-proyecto"
 ```
 
 `config/proyectos.yaml` es un registro liviano y de mantenimiento manual

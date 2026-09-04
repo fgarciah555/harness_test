@@ -178,7 +178,7 @@ def _construir_curl(ruta: str, metodo: str, operacion: dict, spec: dict, base_ur
     elif "multipart/form-data" in content:
         # Form(...)/File(...) de FastAPI -- distinto de application/json, curl
         # usa -F por campo en vez de un body JSON único (bug real encontrado
-        # 2026-08-27, migración Tesorería: el primer proyecto con endpoints
+        # 2026-08-27, primer proyecto con endpoints
         # multipart -- antes esto crasheaba con KeyError('application/json')).
         schema = _resolver_ref(content["multipart/form-data"]["schema"], spec)
         propiedades = schema.get("properties", {})

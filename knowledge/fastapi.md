@@ -19,12 +19,12 @@ mencionar rutas ni barras para nada.
 por default (`follow_redirects=True`, ver `httpx.md`) en vez de depender
 de que cada llamador recuerde la barra exacta de cada router.
 
-**Encontrado en:** `BE-CORE-002`/`DAL-DEPOSITO-001`, 2026-08-26.
+**Encontrado en:** 2026-08-26, un router de depósitos.
 
 ## Un router definido en un módulo plano se importa como atributo del módulo, no como submódulo `.router`
 
 **Verificado:** 2026-08-26, `fastapi==0.115.6`, código real que pasó
-`format_check.py`/Compliance en `Web_coas/web-portal-coas-destino`.
+`format_check.py`/Compliance.
 
 **Patrón correcto:**
 ```python
@@ -44,9 +44,9 @@ Falla con import roto (`format_check.py` lo detecta: "no resuelve a ningún
 archivo del proyecto") porque `app.api.v1.auth` es un **archivo**
 (`auth.py`), no un **paquete** con un submódulo `router.py` adentro — el
 patrón `<algo>.router` es válido cuando `<algo>` es un paquete
-(`app/api/v1/auth/router.py`), pero este proyecto usa un router por
-archivo plano (`app/api/v1/auth.py`, `app/api/v1/reportes.py`), donde
-`router` es simplemente una variable de nivel de módulo. El modelo
+(`app/api/v1/auth/router.py`), pero un proyecto puede usar en cambio un
+router por archivo plano (`app/api/v1/auth.py`, `app/api/v1/reportes.py`),
+donde `router` es simplemente una variable de nivel de módulo. El modelo
 adivinó la convención de paquete (frecuente en otros proyectos FastAPI)
 sin verificar cuál de las dos usa este proyecto en particular.
 
@@ -59,15 +59,13 @@ dos por defecto, y declarar el import literal completo en la `interfaz`
 del item que define el router (ver `plan.contract.md`) para que quien lo
 consume no tenga que adivinar.
 
-**Encontrado en:** `Web_coas/web-portal-coas-destino`, items `BE-CORE-003`
-y `DAL-CORE-002` (montaje de routers en `main.py`), 2026-08-26 — se repitió
+**Encontrado en:** 2026-08-26, montaje de routers en `main.py` — se repitió
 varias veces durante regeneraciones en cascada del mismo bug, no son
 hallazgos independientes.
 
 ## `HTTPBearer` / `HTTPAuthorizationCredentials` viven en `fastapi.security`, no en `fastapi`
 
-**Verificado:** 2026-08-21, `fastapi==0.141.1` (versión resuelta en
-`web-portal-coas-migrado/backend/requirements.txt`, confirmado con
+**Verificado:** 2026-08-21, `fastapi==0.141.1` (confirmado con
 `python -c "import fastapi; print(fastapi.__version__)"`).
 
 **Patrón correcto:**
@@ -89,9 +87,8 @@ from fastapi import Depends, HTTPBearer  # ImportError real
 de seguridad (`HTTPBearer`, `OAuth2PasswordBearer`, `APIKeyHeader`, etc.)
 viven en el submódulo `fastapi.security`, no en el paquete raíz.
 
-**Encontrado en:** `web-portal-coas-migrado`, `COAS-AUTH-003`, 2026-08-21 —
-atrapado por el smoke test (`ImportError` al importar el módulo en
-`pytest`), antes de gastar Compliance.
+**Encontrado en:** 2026-08-21 — atrapado por el smoke test (`ImportError`
+al importar el módulo en `pytest`), antes de gastar Compliance.
 
 ## `include_router` con prefijo — no repetir el prefijo interno del router
 
@@ -104,11 +101,10 @@ segmento: la ruta final queda en `/api/v1/auth/auth/login`. El prefijo de
 lo reemplaza. Usar `app.include_router(auth.router, prefix=settings.api_prefix)`
 (solo el prefijo global) cuando el router ya trae su propio segmento.
 
-**Encontrado en:** primera migración de `web-portal-coas` (2026-08-20, en
-producción real del proyecto, no en un test) y de nuevo como caso de prueba
-explícito en la replanificación del 2026-08-21 (`COAS-CORE-003`, esta vez
-con un test de regresión — `test_ninguna_ruta_duplica_el_segmento_auth_o_reportes`
-— que lo verifica automáticamente).
+**Encontrado en:** 2026-08-20, en producción real de un proyecto (no en un
+test) y de nuevo como caso de prueba explícito en una replanificación
+posterior (2026-08-21), esta vez con un test de regresión que lo verifica
+automáticamente.
 
 ## `app.routes` no lista sub-rutas de `include_router` directamente en versiones recientes
 
@@ -126,9 +122,9 @@ recorrer `_IncludedRouter.routes` (o, más simple y confiable: pegarle a la
 ruta real con `TestClient`/`client.get(...)` en vez de inspeccionar
 `app.routes` a mano).
 
-**Encontrado en:** `web-portal-coas-migrado`, verificación manual post-plan,
-2026-08-21 — casi se interpretó como un bug real del ensamblado de
-`main.py` hasta confirmar con `TestClient` que las rutas sí respondían.
+**Encontrado en:** 2026-08-21, verificación manual post-plan — casi se
+interpretó como un bug real del ensamblado de `main.py` hasta confirmar con
+`TestClient` que las rutas sí respondían.
 
 ## Un default de parámetro de dependencia SIN `Depends(...)` recién explota al montar la app de verdad, no al importar el archivo suelto
 
@@ -162,20 +158,18 @@ mencionando el tipo anotado (ej. `sqlalchemy.orm.session.Session`), porque
 sin `Depends()` FastAPI trata el parámetro como un campo de request/response
 normal, y un tipo no-Pydantic ahí es inválido.
 
-**Por qué se coló hasta un item tan tarde (`COAS-CORE-003`):** el item que
-define esta función (`COAS-AUTH-003`) y el que la usa como router
-(`COAS-AUTH-004`) tienen smoke tests que llaman las funciones directo desde
-Python (`monkeypatch` de las dependencias del repository), nunca montan un
-`APIRouter`/`FastAPI` real — así que ninguno de los dos ejercitó el camino
-que rompe. Recién `COAS-CORE-003` (el item que arma `main.py` y monta todos
-los routers de verdad) lo detectó. Para atraparlo antes: un smoke test que
-monte el router en un `APIRouter`/`TestClient` mínimo, no solo que llame las
-funciones sueltas.
+**Por qué se coló hasta un item tan tarde:** el item que define esta
+función y el que la usa como router tienen smoke tests que llaman las
+funciones directo desde Python (`monkeypatch` de las dependencias del
+repository), nunca montan un `APIRouter`/`FastAPI` real — así que ninguno
+de los dos ejercitó el camino que rompe. Recién el item que arma `main.py`
+y monta todos los routers de verdad lo detectó. Para atraparlo antes: un
+smoke test que monte el router en un `APIRouter`/`TestClient` mínimo, no
+solo que llame las funciones sueltas.
 
-**Encontrado en:** `web-portal-coas-migrado`, `COAS-CORE-003`, 2026-08-21 —
-bloqueó el ensamblado de `main.py`, rechazado incluso tras escalar a
-`executor_senior` (el bug vivía en `COAS-AUTH-003`, no en el item que
-fallaba).
+**Encontrado en:** 2026-08-21 — bloqueó el ensamblado de `main.py`,
+rechazado incluso tras escalar a `executor_senior` (el bug vivía en el item
+que definía la función, no en el que fallaba).
 
 ## `fastapi run` (el comando CLI) necesita `fastapi[standard]`/`fastapi-cli` instalado — `fastapi` + `uvicorn` planos NO alcanzan
 
@@ -213,7 +207,7 @@ referencia que se está copiando —ej. otra migración ya hecha— lo tiene). S
 no lo tiene, usar `uvicorn` directo en vez de copiar el `CMD` del template a
 ciegas.
 
-**Encontrado en:** `tesoreria-migrado`, `DEPLOY-BACKEND-001`/
-`DEPLOY-DAL-001`, 2026-08-27 — a diferencia de `Web_coas`
-(`fastapi[standard]==0.115.6`/`uvicorn[standard]==0.34.0`, `fastapi run`
-funciona ahí sin problema), este proyecto nunca tuvo la extra instalada.
+**Encontrado en:** 2026-08-27, dos deployables (backend y DAL) del mismo
+proyecto — a diferencia de otro proyecto donde `fastapi[standard]`/
+`uvicorn[standard]` sí estaban instalados y `fastapi run` funcionaba sin
+problema, este nunca tuvo la extra instalada.

@@ -50,8 +50,8 @@ cual al migrar — NO "limpiarlo" a `%` simple pensando que es un typo del
 código viejo. Si se transcribe una query nueva con un `LIKE '%...%'` y va a
 ejecutarse con `params`, doblar el `%` desde el vamos.
 
-**Encontrado en:** `tesoreria-migrado`, `DAL-OMS-001`
-(`oms_repository.py`, `QUERY`/`QUERY_POR_FECHA`), 2026-09-01 — bug real en
-producción del entregable, confirmado con el traceback del contenedor
-`dal`. El SQL de origen (`tesoreria-origen/consultas.py`) sí tenía el `%%`
-correcto; se perdió al transcribir el texto a `plan.json.detalle_tecnico`.
+**Encontrado en:** 2026-09-01, un repository de un sistema externo de solo
+lectura (`QUERY`/`QUERY_POR_FECHA`) — bug real en producción del
+entregable, confirmado con el traceback del contenedor `dal`. El SQL de
+origen sí tenía el `%%` correcto; se perdió al transcribir el texto a
+`plan.json.detalle_tecnico`.

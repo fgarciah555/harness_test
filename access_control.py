@@ -98,8 +98,8 @@ class AgentFileGuard:
             # el resto de los permisos que dejó el umask) -- sin esto, un
             # item de plan.json que pida un script ejecutable siempre falla
             # ese criterio en Compliance (LLM, no puede setear el bit ni
-            # verlo desde el contenido del archivo). Encontrado en
-            # Tesorería, DEPLOY-LOCAL-START-001, 2026-08-31.
+            # verlo desde el contenido del archivo). Encontrado en un item
+            # de arranque local (script .sh), 2026-08-31.
             ruta.chmod(ruta.stat().st_mode | 0o111)
 
     def append_line(self, zona: Zona, relative_path: str, line: str):

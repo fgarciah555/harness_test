@@ -3,7 +3,7 @@
 ## `MatSelect`/`MatOption` viven en `@angular/material/select`, no en `form-field`
 
 **Verificado:** 2026-08-26, `@angular/material==22.1.4`, código real que
-compiló con `ng build` en `Web_coas/web-portal-coas-destino`.
+compiló con `ng build`.
 
 **Patrón correcto:**
 ```typescript
@@ -23,12 +23,10 @@ control de Angular Material tiene su propio subpath, `form-field` solo
 exporta el wrapper (`MatFormField`/`MatLabel`/`MatError`/`MatHint`), nunca
 los controles que van adentro.
 
-**Encontrado en:** `Web_coas/web-portal-coas-destino`, item `FE-REP-003`
-(`reporte-venta-diaria.component.ts`), 2026-08-26.
+**Encontrado en:** 2026-08-26, un componente de reporte de venta diaria.
 
 Ver `README.md` para el formato y la disciplina completa. Componentes ya
-usados y verificados con `ng build` real en `web-portal-coas` (Login,
-`COAS-FE-LOGIN-001`): `MatCard`/`MatCardContent` (`@angular/material/card`),
+usados y verificados con `ng build` real en un login: `MatCard`/`MatCardContent` (`@angular/material/card`),
 `MatFormField`/`MatLabel`/`MatError` (`@angular/material/form-field`),
 `MatInput` (`@angular/material/input` — **no** se exporta desde
 `form-field`, submodule aparte), `MatButton` (`@angular/material/button`),
@@ -62,9 +60,8 @@ fuente de Material Icons
 `@angular/material/icon` (no está ahí, es un botón — vive junto a
 `MatButton` en `@angular/material/button`).
 
-**Encontrado en:** `web-portal-coas`, planificación de
-`COAS-FE-MENU-001`/`COAS-FE-MENU-002`, 2026-08-22 (verificado antes de
-escribir el item, sin fallo previo que lo motivara).
+**Encontrado en:** 2026-08-22, planificación de dos pantallas de menú
+(verificado antes de escribir el item, sin fallo previo que lo motivara).
 
 ## Botón submit: deshabilitar por carga Y por validez del form, no solo por carga
 
@@ -79,4 +76,4 @@ habilitado con un formulario inválido (el usuario puede hacer submit antes
 de completar campos requeridos). Las dos condiciones son independientes,
 ninguna reemplaza a la otra.
 
-**Encontrado en:** `web-portal-coas-migrado`, `COAS-AUTH-002`, 2026-08-24.
+**Encontrado en:** 2026-08-24, un formulario de login.

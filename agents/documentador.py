@@ -99,8 +99,8 @@ def bloques_de_rechazo(texto_reporte: str, item_id: str) -> list[str]:
     """
     Extrae de reporte_fallas.md los bloques que pertenecen a item_id.
     Cada bloque empieza en una línea "## {item_id} ..." (match exacto, con
-    espacio después del id -- así "COAS-REP-1" no matchea bloques de
-    "COAS-REP-10") y termina antes del próximo header "## " o al final del
+    espacio después del id -- así "ITEM-1" no matchea bloques de
+    "ITEM-10") y termina antes del próximo header "## " o al final del
     archivo.
     """
     patron = re.compile(rf"^## {re.escape(item_id)} ")
@@ -222,7 +222,7 @@ def _marcar_candidatos_previos_superados(guard: AgentFileGuard, item_id: str) ->
     invalidó como dependiente de otro item que cambió) -- el candidato
     viejo seguía siendo verdad CUANDO se escribió, pero deja de reflejar el
     código real sin ningún aviso. Encontrado en la práctica (2026-08-26,
-    `web-portal-coas` con DAL separado): `BE-AUTH-003` quedó documentado 4
+    backend+DAL separados): un item de autenticación quedó documentado 4
     veces en la misma sesión, y los primeros 3 candidatos describían un uso
     de `CredencialesInvalidasError(code=..., message=...)` que una
     regeneración posterior (por otro motivo) reemplazó por

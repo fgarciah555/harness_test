@@ -199,7 +199,7 @@ def test_calcular_veredicto_rechazado_si_falta_uno():
 
 
 def test_calcular_veredicto_ignora_lo_que_el_modelo_haya_escrito():
-    # Caso real: COAS-FE-CORE-001 (2026-08-20) -- el modelo marcó los 9
+    # Caso real (2026-08-20) -- el modelo marcó los 9
     # criterios cumplido=true pero escribió veredicto="rechazado" en el
     # campo top-level. validar_item() debe recalcular, no confiar en eso.
     criterios_todos_cumplidos = [{"cumplido": True}] * 9
@@ -244,7 +244,7 @@ def test_compliance_construir_contexto_incluye_infraestructura_compartida_siempr
 
 def test_compliance_construir_contexto_incluye_detalle_tecnico_del_item():
     """
-    Encontrado en la práctica (2026-08-21, web-portal-coas): Compliance
+    Encontrado en la práctica (2026-08-21): Compliance
     rechazaba items cuyos criterios_aceptacion citaban "detalle_tecnico"
     (ej. "las columnas listadas en detalle_tecnico") porque construir_contexto
     nunca se lo mandaba -- ni siquiera pasaba por infraestructura compartida
@@ -268,7 +268,7 @@ def test_compliance_construir_contexto_incluye_detalle_tecnico_del_item():
 
 def test_compliance_construir_contexto_incluye_chequeos_previos_segun_tipo():
     """
-    Encontrado en la práctica (2026-08-23, COAS-FE-CORE-006): Compliance
+    Encontrado en la práctica (2026-08-23): Compliance
     rechazó un item frontend correcto (7/7 criterios de contenido cumplidos)
     solo porque no podía "confirmar" que ng build compilaba -- un hecho que
     ya estaba garantizado (frontend_check.py corre y aprueba ANTES de que
@@ -722,7 +722,7 @@ def test_format_check_no_marca_falsos_positivos():
 def test_format_check_resuelve_import_desde_archivo_hermano_de_app():
     # Un archivo que vive FUERA de app/ (backend/tests/, backend/alembic/)
     # pero al mismo nivel que ella (hermano, no contenido) también puede
-    # importar app.* -- encontrado en la práctica migrando Tesorería
+    # importar app.* -- encontrado en la práctica migrando un proyecto real
     # (2026-08-26): backend/tests/test_config.py y backend/alembic/env.py
     # importaban app.core.config y format_check los marcaba como "no
     # resuelve" pese a que el módulo sí existía, porque _paquete_root
@@ -1037,12 +1037,12 @@ def test_combinar_interfaz_normaliza_forma_singular_legacy():
 
 
 def test_combinar_interfaz_normaliza_forma_por_nombre_sin_perder_entradas():
-    # Bug real (2026-08-26, web-portal-coas rehecho con DAL separado): un
+    # Bug real (2026-08-26, backend con DAL separado): un
     # dict keyed-by-nombre en la predicha (sin 'import' como clave directa
     # del dict entero) se trataba como UN solo elemento sin 'import' y se
     # descartaba completo en cuanto la dependencia reportaba su propia
-    # interfaz real -- BE-AUTH-004 se quedó sin los imports de schemas que
-    # BE-AUTH-003 sí declaraba en plan.json.
+    # interfaz real -- un item se quedó sin los imports de schemas que
+    # su dependencia sí declaraba en plan.json.
     predicha = {"dependencia_reusable": {
         "login_cliente": {"import": "app.service.autenticacion_service.login_cliente"},
         "LoginRequest": {"import": "app.schema.request.autenticacion_request.LoginRequest"},
@@ -1064,8 +1064,8 @@ def test_combinar_interfaz_normaliza_forma_por_nombre_sin_perder_entradas():
 
 
 def test_podar_predicha_no_generada_descarta_simbolo_inexistente():
-    # Caso real: DAL-AUTH-003 (web-portal-coas rehecho con DAL separado,
-    # 2026-08-26) predijo un único 'router_autenticacion' que el código
+    # Caso real (backend con DAL separado,
+    # 2026-08-26): un item predijo un único 'router_autenticacion' que el código
     # real nunca implementó bajo ese nombre (Executor optó por 3 routers
     # separados). Ver docstring de podar_predicha_no_generada.
     predicha = {"dependencia_reusable": [
@@ -1116,7 +1116,7 @@ def test_construir_contexto_incluye_interfaz_real_de_una_dependencia():
 
 
 def test_construir_contexto_no_arrastra_predicha_de_simbolo_inexistente():
-    # Reproduce el caso real DAL-AUTH-003/DAL-CORE-002 (2026-08-26): la
+    # Reproduce un caso real (2026-08-26): la
     # predicha de PED-001 dice 'get_current_user' (ver plan.example.json),
     # pero el código real generado para PED-001 nunca definió ese nombre --
     # solo 'hash_password' (que sí reporta como real). Sin la poda,
@@ -1154,7 +1154,7 @@ def test_construir_contexto_no_arrastra_predicha_de_simbolo_inexistente():
 
 
 def test_construir_contexto_con_guard_sin_permiso_de_project_dir_no_revienta():
-    # Regresión real (2026-08-27, migración Tesorería): arbitro.py llama a
+    # Regresión real (2026-08-27): arbitro.py llama a
     # construir_contexto con su propio guard para armar el mismo contexto
     # que vio Executor -- pero arbitro tiene project_dir:none a propósito
     # (config/permissions.yaml, nunca debería necesitar leer código). La
@@ -1251,7 +1251,7 @@ def test_regenerar_catalogo_endpoints_soporta_interfaz_endpoint_como_lista():
             "metadata": {"proyecto": "test"},
             "decisiones_globales": {},
             "items": [{
-                "id": "DAL-X-001", "tipo": "backend", "descripcion": "x",
+                "id": "ITEM-X-001", "tipo": "backend", "descripcion": "x",
                 "archivos_destino": ["dal/app/api/v1/x.py"], "detalle_tecnico": "x",
                 "criterios_aceptacion": ["x"], "depende_de": [],
                 "interfaz": {"endpoint": [
@@ -1263,8 +1263,8 @@ def test_regenerar_catalogo_endpoints_soporta_interfaz_endpoint_como_lista():
             "riesgos_heredados": [],
         }
         (harness / "config" / "plan.json").write_text(json.dumps(plan))
-        (harness / "validation" / "DAL-X-001.json").write_text(json.dumps({
-            "item_id": "DAL-X-001", "veredicto": "aprobado",
+        (harness / "validation" / "ITEM-X-001.json").write_text(json.dumps({
+            "item_id": "ITEM-X-001", "veredicto": "aprobado",
             "timestamp": "2026-01-01T00:00:00+00:00",
             "criterios_evaluados": [], "detalle": "",
         }))
@@ -1279,45 +1279,45 @@ def test_regenerar_catalogo_endpoints_soporta_interfaz_endpoint_como_lista():
 REPORTE_FALLAS_EJEMPLO = """\
 # Reporte de fallas — requieren reparación manual
 
-## COAS-REP-1 — rechazo 1/2 — 2026-08-21T10:00:00-04:00
+## ITEM-REP-1 — rechazo 1/2 — 2026-08-21T10:00:00-04:00
 
 Pendiente de decisión antes de reintentar:
 
 ```
-- NO CUMPLIDO: algo específico de COAS-REP-1
+- NO CUMPLIDO: algo específico de ITEM-REP-1
 ```
 
-Veredicto completo: `.harness/validation/COAS-REP-1.json`.
+Veredicto completo: `.harness/validation/ITEM-REP-1.json`.
 
 ---
 
-## COAS-REP-10 — 2026-08-21T11:00:00-04:00
+## ITEM-REP-10 — 2026-08-21T11:00:00-04:00
 
 Intentos agotados (1). Último motivo:
 
 ```
-otra falla, de COAS-REP-10, no debería mezclarse con COAS-REP-1
+otra falla, de ITEM-REP-10, no debería mezclarse con ITEM-REP-1
 ```
 
-Veredicto completo: `.harness/validation/COAS-REP-10.json`.
+Veredicto completo: `.harness/validation/ITEM-REP-10.json`.
 
 ---
 """
 
 
 def test_documentador_bloques_de_rechazo_extrae_solo_el_item_pedido():
-    bloques_1 = bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "COAS-REP-1")
+    bloques_1 = bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "ITEM-REP-1")
     assert len(bloques_1) == 1
-    assert "COAS-REP-1" in bloques_1[0]
-    assert "COAS-REP-10" not in bloques_1[0]
-    assert "algo específico de COAS-REP-1" in bloques_1[0]
+    assert "ITEM-REP-1" in bloques_1[0]
+    assert "ITEM-REP-10" not in bloques_1[0]
+    assert "algo específico de ITEM-REP-1" in bloques_1[0]
 
-    bloques_10 = bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "COAS-REP-10")
+    bloques_10 = bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "ITEM-REP-10")
     assert len(bloques_10) == 1
-    assert "de COAS-REP-10" in bloques_10[0]
+    assert "de ITEM-REP-10" in bloques_10[0]
 
-    assert bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "COAS-REP-99") == []
-    print("OK: bloques_de_rechazo separa por item_id exacto (COAS-REP-1 no matchea bloques de COAS-REP-10)")
+    assert bloques_de_rechazo(REPORTE_FALLAS_EJEMPLO, "ITEM-REP-99") == []
+    print("OK: bloques_de_rechazo separa por item_id exacto (ITEM-REP-1 no matchea bloques de ITEM-REP-10)")
 
 
 def test_documentador_construir_contexto_incluye_rechazos_y_codigo_final():
@@ -1329,14 +1329,14 @@ def test_documentador_construir_contexto_incluye_rechazos_y_codigo_final():
         harness.mkdir(parents=True)
         (harness / "reporte_fallas.md").write_text(REPORTE_FALLAS_EJEMPLO)
 
-        item = _item_compliance("COAS-REP-1", archivos_destino=["app/core.py"])
+        item = _item_compliance("ITEM-REP-1", archivos_destino=["app/core.py"])
         plan = {"decisiones_globales": {}, "items": [item]}
         guard = AgentFileGuard("documentador", str(project_root))
 
-        contexto = construir_contexto_documentador(plan, "COAS-REP-1", guard)
+        contexto = construir_contexto_documentador(plan, "ITEM-REP-1", guard)
 
         assert len(contexto["bloques_rechazo"]) == 1
-        assert "COAS-REP-10" not in contexto["bloques_rechazo"][0]
+        assert "ITEM-REP-10" not in contexto["bloques_rechazo"][0]
         assert contexto["codigo_final_aprobado"]["app/core.py"] == "# version final aprobada\n"
         assert contexto["ticket_reintento"] == ""  # no se creó ningún ticket en este fixture
         print("OK: construir_contexto del documentador junta el rechazo real y el código final aprobado")
@@ -1350,14 +1350,14 @@ def test_documentador_construir_contexto_incluye_ticket_de_reintento_si_existe()
         harness = project_root / ".harness" / "logs"
         harness.mkdir(parents=True)
 
-        item = _item_compliance("COAS-REP-1", archivos_destino=["app/core.py"])
+        item = _item_compliance("ITEM-REP-1", archivos_destino=["app/core.py"])
         plan = {"decisiones_globales": {}, "items": [item]}
         _actualizar_ticket_reintento(
             project_root, item, {"criterios_evaluados": [], "detalle": "rompía el otro caso"}, fuente="smoke_test",
         )
         guard = AgentFileGuard("documentador", str(project_root))
 
-        contexto = construir_contexto_documentador(plan, "COAS-REP-1", guard)
+        contexto = construir_contexto_documentador(plan, "ITEM-REP-1", guard)
         assert "rompía el otro caso" in contexto["ticket_reintento"]
         assert "fuente: smoke_test" in contexto["ticket_reintento"]
         print("OK: construir_contexto del documentador incluye el ticket de reintento completo cuando existe")
@@ -1414,12 +1414,12 @@ def test_orchestrator_item_tuvo_rechazos_segun_reporte_fallas():
         harness.mkdir(parents=True)
         (harness / "reporte_fallas.md").write_text(REPORTE_FALLAS_EJEMPLO)
 
-        assert _item_tuvo_rechazos(root, "COAS-REP-1") is True
-        assert _item_tuvo_rechazos(root, "COAS-REP-10") is True
-        assert _item_tuvo_rechazos(root, "COAS-REP-99") is False
+        assert _item_tuvo_rechazos(root, "ITEM-REP-1") is True
+        assert _item_tuvo_rechazos(root, "ITEM-REP-10") is True
+        assert _item_tuvo_rechazos(root, "ITEM-REP-99") is False
 
     with tempfile.TemporaryDirectory() as tmp_sin_reporte:
-        assert _item_tuvo_rechazos(Path(tmp_sin_reporte), "COAS-REP-1") is False
+        assert _item_tuvo_rechazos(Path(tmp_sin_reporte), "ITEM-REP-1") is False
 
     print("OK: _item_tuvo_rechazos de orchestrator detecta bloques por item_id exacto, sin reporte_fallas.md da False")
 
@@ -1427,12 +1427,12 @@ def test_orchestrator_item_tuvo_rechazos_segun_reporte_fallas():
 def test_arbitro_parsea_interfaz_incompleta():
     texto = (
         "### INTERFAZ_INCOMPLETA\n"
-        '{"item_productor": "DAL-CORE-001", "simbolo_faltante": "app.core.database.Base", '
-        '"explicacion": "DAL-CORE-001 define database.py pero su interfaz no expone Base"}\n'
+        '{"item_productor": "ITEM-CORE-001", "simbolo_faltante": "app.core.database.Base", '
+        '"explicacion": "ITEM-CORE-001 define database.py pero su interfaz no expone Base"}\n'
         "### END INTERFAZ_INCOMPLETA"
     )
     parseado = _parsear_interfaz_incompleta(texto)
-    assert parseado["item_productor"] == "DAL-CORE-001"
+    assert parseado["item_productor"] == "ITEM-CORE-001"
     assert parseado["simbolo_faltante"] == "app.core.database.Base"
     assert "no expone Base" in parseado["explicacion"]
     print("OK: arbitro parsea INTERFAZ_INCOMPLETA con item_productor/simbolo_faltante/explicacion")
@@ -1457,14 +1457,14 @@ def test_documentador_marca_candidato_previo_del_mismo_item_como_supersedido():
         (project_root / ".harness" / "logs").mkdir(parents=True)
         guard = AgentFileGuard("documentador", str(project_root))
 
-        bloque_viejo = _formatear_bloque_salida("BE-AUTH-003", {
+        bloque_viejo = _formatear_bloque_salida("ITEM-AUTH-003", {
             "clasificacion": "decision_arquitectura",
             "resumen": "version vieja, ya superada",
             "candidato_entrada": "## algo viejo\ncontenido viejo",
         })
         guard.append_line(Zona.HARNESS_LOGS, "candidatos_conocimiento.md", bloque_viejo)
 
-        _marcar_candidatos_previos_superados(guard, "BE-AUTH-003")
+        _marcar_candidatos_previos_superados(guard, "ITEM-AUTH-003")
 
         contenido = guard.read(Zona.HARNESS_LOGS, "candidatos_conocimiento.md")
         assert MARCA_SUPERSEDIDO.strip() in contenido
@@ -1478,29 +1478,29 @@ def test_documentador_no_marca_candidatos_de_otro_item_ni_duplica_marca():
         (project_root / ".harness" / "logs").mkdir(parents=True)
         guard = AgentFileGuard("documentador", str(project_root))
 
-        # BE-REP-1 no debe matchear al marcar BE-REP-10 (mismo cuidado que
+        # ITEM-REP2-1 no debe matchear al marcar ITEM-REP2-10 (mismo cuidado que
         # bloques_de_rechazo con IDs que comparten prefijo)
-        bloque_otro_item = _formatear_bloque_salida("BE-REP-1", {
+        bloque_otro_item = _formatear_bloque_salida("ITEM-REP2-1", {
             "clasificacion": "decision_arquitectura",
             "resumen": "de otro item, no debe tocarse",
             "candidato_entrada": "## x\ny",
         })
         guard.append_line(Zona.HARNESS_LOGS, "candidatos_conocimiento.md", bloque_otro_item)
 
-        _marcar_candidatos_previos_superados(guard, "BE-REP-10")
+        _marcar_candidatos_previos_superados(guard, "ITEM-REP2-10")
         contenido = guard.read(Zona.HARNESS_LOGS, "candidatos_conocimiento.md")
-        assert MARCA_SUPERSEDIDO.strip() not in contenido, "BE-REP-1 no es BE-REP-10, no debía marcarse"
+        assert MARCA_SUPERSEDIDO.strip() not in contenido, "ITEM-REP2-1 no es ITEM-REP2-10, no debía marcarse"
 
-        # ahora agregamos un candidato real de BE-REP-10 y marcamos dos veces seguidas
-        bloque_viejo_10 = _formatear_bloque_salida("BE-REP-10", {
+        # ahora agregamos un candidato real de ITEM-REP2-10 y marcamos dos veces seguidas
+        bloque_viejo_10 = _formatear_bloque_salida("ITEM-REP2-10", {
             "clasificacion": "patron_libreria",
-            "resumen": "primera version de BE-REP-10",
+            "resumen": "primera version de ITEM-REP2-10",
             "candidato_entrada": "## x\ny",
         })
         guard.append_line(Zona.HARNESS_LOGS, "candidatos_conocimiento.md", bloque_viejo_10)
 
-        _marcar_candidatos_previos_superados(guard, "BE-REP-10")
-        _marcar_candidatos_previos_superados(guard, "BE-REP-10")  # llamar 2 veces no debe duplicar la marca
+        _marcar_candidatos_previos_superados(guard, "ITEM-REP2-10")
+        _marcar_candidatos_previos_superados(guard, "ITEM-REP2-10")  # llamar 2 veces no debe duplicar la marca
         contenido = guard.read(Zona.HARNESS_LOGS, "candidatos_conocimiento.md")
         assert contenido.count(MARCA_SUPERSEDIDO.strip()) == 1, "la marca no debe duplicarse en llamados repetidos (idempotente)"
         print("OK: documentador no confunde IDs con prefijo compartido y no duplica la marca al llamarse dos veces")
@@ -1521,7 +1521,7 @@ def test_documentador_resolucion_completa_marca_supersedidos_de_verdad():
         plan = {
             "metadata": {}, "decisiones_globales": {},
             "items": [{
-                "id": "BE-X-001", "tipo": "backend", "descripcion": "d",
+                "id": "ITEM-X-002", "tipo": "backend", "descripcion": "d",
                 "detalle_tecnico": "dt", "archivos_destino": ["backend/archivo.py"],
                 "criterios_aceptacion": ["c"], "depende_de": [], "interfaz": {},
                 "estado": "pendiente",
@@ -1530,7 +1530,7 @@ def test_documentador_resolucion_completa_marca_supersedidos_de_verdad():
         }
         (harness / "config" / "plan.json").write_text(json.dumps(plan))
         (harness / "logs" / "reporte_fallas.md").write_text(
-            "## BE-X-001 — rechazo 1/2 — 2026-01-01T00:00:00+00:00\n\nmotivo viejo\n\n---\n\n"
+            "## ITEM-X-002 — rechazo 1/2 — 2026-01-01T00:00:00+00:00\n\nmotivo viejo\n\n---\n\n"
         )
 
         import agents.documentador as documentador_mod
@@ -1551,9 +1551,9 @@ def test_documentador_resolucion_completa_marca_supersedidos_de_verdad():
         original = documentador_mod.get_engine_for_agent
         documentador_mod.get_engine_for_agent = lambda agente: MotorFalso()
         try:
-            r1 = documentador_mod.documentar_resolucion(str(project_root), "BE-X-001")
+            r1 = documentador_mod.documentar_resolucion(str(project_root), "ITEM-X-002")
             assert r1["estado"] == "documentado"
-            r2 = documentador_mod.documentar_resolucion(str(project_root), "BE-X-001")
+            r2 = documentador_mod.documentar_resolucion(str(project_root), "ITEM-X-002")
             assert r2["estado"] == "documentado"
         finally:
             documentador_mod.get_engine_for_agent = original
@@ -1574,11 +1574,11 @@ def test_arbitro_falta_dependencia_sigue_funcionando():
     # regresión: agregar INTERFAZ_INCOMPLETA no debe romper el parser existente
     texto = (
         "### FALTA_DEPENDENCIA\n"
-        '{"items_faltantes": ["DAL-CORE-001"], "explicacion": "define Base"}\n'
+        '{"items_faltantes": ["ITEM-CORE-001"], "explicacion": "define Base"}\n'
         "### END FALTA_DEPENDENCIA"
     )
     parseado = _parsear_falta_dependencia(texto)
-    assert parseado["items_faltantes"] == ["DAL-CORE-001"]
+    assert parseado["items_faltantes"] == ["ITEM-CORE-001"]
     print("OK: _parsear_falta_dependencia sigue funcionando tras agregar INTERFAZ_INCOMPLETA")
 
 
@@ -1683,8 +1683,8 @@ def _con_api_key_dummy(nombre_var, valor, fn):
 
 
 def test_kimi_read_timeout_da_timeout_del_motor_no_crashea():
-    # Regresión real (2026-08-27, migración Tesorería): un ReadTimeout real
-    # de la API de Kimi (item grande, ej. BE-CLIENT-001) se propagaba crudo
+    # Regresión real (2026-08-27): un ReadTimeout real
+    # de la API de Kimi (un item grande) se propagaba crudo
     # -- ni MotorInalcanzable ni TimeoutDelMotor lo capturaban -- y reventaba
     # el proceso completo de --loop. kimi_api.py no envolvía Timeout en
     # absoluto (mismo estilo que deepseek_api.py, nunca portado el fix de
@@ -1879,7 +1879,7 @@ def test_executor_propaga_motor_inalcanzable_en_vez_de_tragarselo():
         plan = {
             "metadata": {}, "decisiones_globales": {},
             "items": [{
-                "id": "BE-X-001", "tipo": "backend", "descripcion": "d",
+                "id": "ITEM-X-002", "tipo": "backend", "descripcion": "d",
                 "detalle_tecnico": "dt", "archivos_destino": ["backend/archivo.py"],
                 "criterios_aceptacion": ["c"], "depende_de": [], "interfaz": {},
                 "estado": "pendiente",
@@ -1898,7 +1898,7 @@ def test_executor_propaga_motor_inalcanzable_en_vez_de_tragarselo():
         executor_mod.get_engine_for_agent = lambda agente: MotorFalso()
         try:
             try:
-                executor_mod.ejecutar_item(str(project_root), "BE-X-001")
+                executor_mod.ejecutar_item(str(project_root), "ITEM-X-002")
                 assert False, "ejecutar_item debería propagar MotorInalcanzable, no tragárselo"
             except MotorInalcanzable:
                 pass
@@ -1919,7 +1919,7 @@ def test_documentador_propaga_motor_inalcanzable_en_vez_de_tragarselo():
         plan = {
             "metadata": {}, "decisiones_globales": {},
             "items": [{
-                "id": "BE-X-001", "tipo": "backend", "descripcion": "d",
+                "id": "ITEM-X-002", "tipo": "backend", "descripcion": "d",
                 "detalle_tecnico": "dt", "archivos_destino": ["backend/archivo.py"],
                 "criterios_aceptacion": ["c"], "depende_de": [], "interfaz": {},
                 "estado": "pendiente",
@@ -1928,7 +1928,7 @@ def test_documentador_propaga_motor_inalcanzable_en_vez_de_tragarselo():
         }
         (harness / "config" / "plan.json").write_text(json.dumps(plan))
         (harness / "logs" / "reporte_fallas.md").write_text(
-            "## BE-X-001 — rechazo 1/2 — 2026-01-01T00:00:00+00:00\n\nmotivo viejo\n\n---\n\n"
+            "## ITEM-X-002 — rechazo 1/2 — 2026-01-01T00:00:00+00:00\n\nmotivo viejo\n\n---\n\n"
         )
 
         import agents.documentador as documentador_mod
@@ -1941,7 +1941,7 @@ def test_documentador_propaga_motor_inalcanzable_en_vez_de_tragarselo():
         documentador_mod.get_engine_for_agent = lambda agente: MotorFalso()
         try:
             try:
-                documentador_mod.documentar_resolucion(str(project_root), "BE-X-001")
+                documentador_mod.documentar_resolucion(str(project_root), "ITEM-X-002")
                 assert False, "documentar_resolucion debería propagar MotorInalcanzable, no tragárselo"
             except MotorInalcanzable:
                 pass
@@ -2144,7 +2144,7 @@ def test_documentar_si_corresponde_no_tira_el_pipeline_si_el_motor_esta_inalcanz
         orchestrator_mod.documentar_resolucion = _documentar_falso
         try:
             # no debe lanzar, ni con confirmar=False (nadie puede responder la pregunta)
-            _documentar_si_corresponde(str(project_root), "BE-X-001", confirmar=False)
+            _documentar_si_corresponde(str(project_root), "ITEM-X-002", confirmar=False)
         finally:
             orchestrator_mod.documentar_resolucion = original
 

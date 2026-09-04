@@ -57,9 +57,9 @@ transacción.
 resuelven dentro del DAL, no round-trip por red por iteración.** Si el
 `detalle_tecnico` de un item de `service` en el origen necesita varias queries
 en loop (ej. una query por fila de un resultado anterior para enriquecerla, o
-una query por mes/período en un rango) — patrón real encontrado migrando
-`web-portal-coas`: notas de crédito por local en el reporte de venta diaria, y
-hasta 24 meses de sumas de depósitos/ventas en el cálculo de saldo — el DAL
+una query por mes/período en un rango) — patrón real encontrado migrando un
+backend con reportes agregados: notas de crédito por entidad en un reporte
+diario, y hasta 24 meses de sumas en un cálculo de saldo — el DAL
 expone un endpoint compuesto que hace esas N queries (o el `JOIN`/`GROUP BY`
 equivalente) en su propio proceso, y devuelve el resultado ya armado en una
 sola respuesta. El `service` del backend sigue siendo quien decide *qué*
@@ -162,8 +162,8 @@ compuesta) — ahí el patrón `Mapped`/`mapped_column` de siempre sigue siendo 
 correcto.
 
 **Verificar identidad significa verificar MULTIPLICIDAD real, no solo que la columna
-"suene" a identidad (bug real, 2026-08-26, migración `web-portal-coas` con DAL
-separado):** esta misma sección citaba antes `usuarios.ca_rut` como ejemplo de
+"suene" a identidad (bug real, 2026-08-26, migración con backend y DAL
+separados):** esta misma sección citaba antes `usuarios.ca_rut` como ejemplo de
 identidad natural verificada — estaba mal. `ca_rut` parece la identidad obvia de un
 usuario, pero la tabla real tiene UNA FILA POR (rut, comercio) — un usuario con
 acceso a varios comercios tiene varias filas con el mismo `ca_rut`. Declarar
@@ -173,7 +173,8 @@ identity map de SQLAlchemy trata dos filas con el mismo valor de PK declarado co
 LA MISMA entidad, así que un `select(Usuario).where(ca_rut==rut).scalars().all()`
 con 2 filas reales en la BD devuelve solo 1 objeto (la primera cargada) — sin
 excepción, sin warning, el error queda enterrado en un dato de negocio incorrecto
-(ver `Harness/handoff.md`, caso `DAL-AUTH-001`/multi-comercio). Antes de declarar
+(ver `Harness/handoff.md`, caso de un item de autenticación con multi-comercio).
+Antes de declarar
 `primary_key=True` en una columna (sola o compuesta) por ser "la identidad lógica"
 de la entidad, hay que confirmar que ESA combinación de columnas es realmente única
 por fila en el uso real de la tabla — mirando cómo el propio dominio consulta esa
@@ -216,7 +217,7 @@ nombre real en snake_case, nunca por el alias camelCase.**
 > (`body.token_pre_auth`), nunca por el alias camelCase (`body.tokenPreAuth`) —
 > el alias no existe como atributo Python del modelo, acceder por ahí revienta
 > con `AttributeError` en runtime aunque el schema esté bien definido. Encontrado
-> en la práctica: `web-portal-coas-migrado`, `COAS-AUTH-004`, 2026-08-24.
+> en la práctica en un item de autenticación real, 2026-08-24.
 
 ## Dónde vive el `commit()` — decisión fijada
 

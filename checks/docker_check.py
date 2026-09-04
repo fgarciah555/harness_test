@@ -13,13 +13,13 @@ espera. Ese tipo de verificación tiene que ser determinística, acá.
 
 Dos campos opcionales nuevos en el item de plan.json, pensados para
 generalizar más allá de este caso (cualquier proyecto que use este harness
-puede necesitarlos, no solo Tesorería):
+puede necesitarlos, no solo el que lo motivó):
 
 - `verificacion_runtime`: lista de {"comando": str, "debe_contener": str}.
   Tras un build exitoso de un Dockerfile del item, corre cada comando
   DENTRO de la imagen recién construida (`docker run --rm`) y confirma que
   su stdout contenga el texto esperado. Ejemplo real que motivó esto
-  (Tesorería, DAL-AS400): el paquete `ibm-iaccess` instala el driver ODBC
+  (un DAL con dependencia de AS400): el paquete `ibm-iaccess` instala el driver ODBC
   de IBM vía apt, pero nada garantiza que lo registre en odbcinst.ini bajo
   el mismo nombre que `AS400_DRIVER` espera en el código -- la imagen
   arrancaría igual, y solo fallaría en runtime al conectar. Con
@@ -37,10 +37,10 @@ puede necesitarlos, no solo Tesorería):
   FastAPI, no depende de curl/wget instalados) -- mismo criterio de
   verificación, sin violar el aislamiento de red del servicio. `docker
   compose down -v` corre siempre al final, pase lo que pase. Deliberadamente NO verifica
-  conectividad a sistemas externos reales (OMS/MRET/PTH/AS400/LDAP): sin
+  conectividad a sistemas externos reales (ej. AS400/LDAP): sin
   credenciales reales en este entorno sería un smoke test falso. Confirmar
   que el/los endpoint(s) de `path` no dependan de esos sistemas antes de
-  declararlos acá (ver ejemplo real: GET /health de Tesorería devuelve
+  declararlos acá (ver ejemplo real: GET /health devuelve
   {"status": "ok"} estático, no toca nada externo).
 """
 import shutil

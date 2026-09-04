@@ -7,9 +7,8 @@ config/models.yaml
 .pytest_cache/
 .claude/settings.local.json
 
-# Contenido real de proyectos migrados: rutas locales y detalle de clientes,
-# nunca sube al repo -- ver config/proyectos.yaml.example para la estructura.
-handoff.md
-handoff.md.bak-*
-Pendientes.md
+# Registro de proyectos: rutas locales + detalle de clientes, nunca sube al
+# repo -- ver config/proyectos.yaml.example para la estructura. handoff.md y
+# Pendientes.md sí se versionan (2026-09-04): quedaron genericizados, sin
+# nombres de proyecto/cliente, como bitácora de diseño del harness en sí.
 config/proyectos.yaml

@@ -74,9 +74,9 @@ class KimiEngine(ModelEngine):
                 f"No se pudo conectar a Kimi en {self.base_url}: {e}"
             ) from e
         except requests.exceptions.Timeout as e:
-            # Confirmado en vivo (2026-08-27, migración Tesorería): sin este
+            # Confirmado en vivo (2026-08-27): sin este
             # try/except, un ReadTimeout de verdad (item grande, ej.
-            # BE-CLIENT-001 con 14 funciones) se propagaba crudo y reventaba
+            # un cliente con 14 funciones) se propagaba crudo y reventaba
             # todo el proceso de --loop -- exactamente el mismo tipo de bug
             # que ya se había corregido para LM Studio, pero nunca portado
             # acá. TimeoutDelMotor deja que el loop normal de reintentos se

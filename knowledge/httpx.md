@@ -16,5 +16,6 @@ Default de `httpx` es `follow_redirects=False`. Si el destino responde
 **Regla práctica:** cualquier cliente HTTP interno servicio-a-servicio
 debería declarar `follow_redirects=True` desde el vamos.
 
-**Encontrado en:** `BE-CORE-002` (`dal_client_base.py`), 2026-08-26 — 10
-items dependientes invalidados al corregirlo (cliente compartido).
+**Encontrado en:** 2026-08-26, el cliente HTTP base compartido de un
+backend (`dal_client_base.py`) — 10 items dependientes invalidados al
+corregirlo (cliente compartido).

@@ -5,7 +5,7 @@ ejecuta nada del código generado — solo análisis estático (ast) — así qu
 necesita las dependencias del proyecto instaladas ni toca ninguna base de
 datos. Es la primera pieza de "Format check" del diseño original del
 harness (ver handoff.md), acotada a lo que encontramos en la práctica
-migrando web-portal-coas: imports internos rotos y nombres que se pisan.
+migrando un backend FastAPI real: imports internos rotos y nombres que se pisan.
 
 No es un agente — no pasa por AgentFileGuard, igual que orchestrator.py.
 
@@ -19,7 +19,7 @@ Cuatro chequeos:
    importar una clase/función que nunca existió en ese archivo (ej. `from
    app.repository.usuario_repository import UsuarioRepository` cuando ese
    módulo en realidad expone funciones sueltas, no una clase con ese
-   nombre). Encontrado en la práctica 4 veces migrando web-portal-coas —
+   nombre). Encontrado en la práctica 4 veces migrando un backend real —
    el chequeo (1) por sí solo no lo atrapaba porque el módulo sí existía,
    solo el nombre adentro estaba mal.
 3. Ninguna función/clase definida en el archivo pisa un nombre ya importado
@@ -62,7 +62,7 @@ def _paquete_root(ruta_archivo: Path, project_root: Path) -> Path:
     archivo buscando el primero que tenga un 'app/' como hijo directo. Sin
     esto, un archivo de test o de infraestructura (alembic/env.py) que
     importa app.core.config se marcaba como "no resuelve" aunque el módulo
-    sí existiera -- encontrado en la práctica migrando Tesorería, 2026-08-26.
+    sí existiera -- encontrado en la práctica en un proyecto real, 2026-08-26.
     """
     rel = ruta_archivo.relative_to(project_root)
     partes = rel.parts

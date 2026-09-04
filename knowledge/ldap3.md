@@ -3,9 +3,9 @@
 ## Bind directo contra Active Directory (autenticación por UPN, sin cuenta de servicio)
 
 **Verificado:** 2026-08-26, contra código real en producción (no doc oficial
-re-chequeada aparte — el patrón ya corre contra el AD real de la empresa en
-`tesoreria-origen/auth_ldap.py`, tratado como fuente confiable equivalente a
-"verificado contra comportamiento real" por `knowledge/README.md`).
+re-chequeada aparte — el patrón ya corre contra el AD real de la empresa,
+tratado como fuente confiable equivalente a "verificado contra
+comportamiento real" por `knowledge/README.md`).
 
 **Patrón correcto:**
 ```python
@@ -13,7 +13,7 @@ from ldap3 import ALL, SIMPLE, Connection, Server
 from ldap3.core.exceptions import LDAPSocketOpenError, LDAPSocketReceiveError
 
 server = Server(host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=timeout_seg)
-principal = f"{usuario}@{dominio}"  # UPN, ej. dominio derivado de "DC=hites,DC=global" -> "hites.global"
+principal = f"{usuario}@{dominio}"  # UPN, ej. dominio derivado de "DC=empresa,DC=local" -> "empresa.local"
 
 conn = None
 try:
@@ -46,4 +46,5 @@ código origen (`_autenticar_con_cuenta_servicio`) para cuando haya
 modos en la migración, no solo el directo (hoy activo), por si se configura
 la cuenta de servicio más adelante sin tocar código.
 
-**Encontrado en:** `tesoreria-migrado`, `TES-AUTH-001`, 2026-08-26.
+**Encontrado en:** 2026-08-26, un item de login contra un directorio LDAP
+real.

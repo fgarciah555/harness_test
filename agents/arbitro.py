@@ -17,8 +17,8 @@ Devuelve uno de cuatro resultados (ver resolver_bloqueo):
   pero su `interfaz` no expone el símbolo -- acá arbitro no puede arreglar
   nada (no escribe contenido de items), solo señala item_productor +
   símbolo exacto para que quede registrado en el reporte de fallas y el
-  Planner lo corrija. Encontrado en la práctica (2026-08-26, migración de
-  web-portal-coas con DAL separado): 4 de 9 bloqueos de esa sesión eran
+  Planner lo corrija. Encontrado en la práctica (2026-08-26, backend+DAL
+  separados): 4 de 9 bloqueos de esa sesión eran
   justo este caso, y "falta_dependencia" los reportaba como "nada que
   agregar" sin decir POR QUÉ, obligando a diagnosticar a mano cada vez.
 - Que no puede resolverlo con lo que tiene -- ahí orchestrator.py deja de

@@ -21,13 +21,13 @@ Angular solo trae `en-US` por default. Cualquier otro locale existe en
 — `DecimalPipe`/`CurrencyPipe`/`PercentPipe` tiran en cuanto se usan, no al
 arrancar, por eso ni el build ni un test con mocks lo atrapan.
 
-**Encontrado en:** `FE-CORE-003` (`app.config.ts`), 2026-08-26.
+**Encontrado en:** 2026-08-26, item de configuración global del frontend
+(`app.config.ts`).
 
 ## `getRawValue()` de un `FormGroup` con valor inicial `null` sigue tipando ese campo como `T | null`, aunque el control sea `required`
 
 **Verificado:** 2026-08-26, `@angular/core==22.1.0` / `@angular/forms` (misma
-versión, paquete del monorepo Angular), código real que pasó `ng build` en
-`Web_coas/web-portal-coas-destino`.
+versión, paquete del monorepo Angular), código real que pasó `ng build`.
 
 **Patrón correcto:**
 ```typescript
@@ -71,5 +71,5 @@ of type 'number'` — el chequeo de tipos de TypeScript no razona sobre
 tipada sin `null` — no alcanza con la validación reactiva del formulario,
 son dos mecanismos distintos (runtime vs. tipos estáticos).
 
-**Encontrado en:** `Web_coas/web-portal-coas-destino`, item `FE-REP-002`
-(`reporte-depositos.component.ts`), 2026-08-26.
+**Encontrado en:** 2026-08-26, un componente de reporte con filtro de
+mes/año (`reporte-depositos.component.ts`).

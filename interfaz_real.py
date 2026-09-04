@@ -27,8 +27,8 @@ def _como_lista(dependencia_reusable) -> list[dict]:
     agents/executor.py::_escribir_interfaz_real):
       - forma singular vieja: un dict suelto con 'import' como clave directa
         (`{"import": "...", "nombre": ...}`) -> se envuelve en una lista de 1.
-      - forma por nombre (usada en planes reales, ej. web-portal-coas
-        rehecho con DAL separado, 2026-08-26): un dict SIN 'import' propio,
+      - forma por nombre (usada en planes reales, ej. un backend+DAL
+        separados, 2026-08-26): un dict SIN 'import' propio,
         cuyas claves son nombres y cuyos valores son los dicts reusables
         (`{"LoginRequest": {"import": "..."}, "TokenResponse": {"import": "..."}}`)
         -> se aplana a lista, inyectando 'nombre' desde la clave si el valor
@@ -36,8 +36,8 @@ def _como_lista(dependencia_reusable) -> list[dict]:
         entero como un único elemento sin 'import' -> lo descartaba
         silenciosamente, perdiendo TODAS las entradas de la predicha en
         cuanto la dependencia reportaba su propia interfaz real (bug real
-        encontrado ejecutando ese plan: BE-AUTH-004 se quedó sin los
-        imports de schemas que BE-AUTH-003 sí declaraba en plan.json).
+        encontrado ejecutando ese plan: un item de auth se quedó sin los
+        imports de schemas que su dependencia sí declaraba en plan.json).
       - forma lista: ya es lo que se necesita, se devuelve tal cual.
     """
     if isinstance(dependencia_reusable, dict):
