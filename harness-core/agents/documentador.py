@@ -24,8 +24,10 @@ AGENT_NAME = "documentador"
 CLASIFICACIONES = ("patron_libreria", "decision_arquitectura", "bug_negocio_proyecto")
 
 SYSTEM_PROMPT = """\
-Sos el agente Documentador de un harness de migración de monolitos hacia \
-FastAPI + Angular. Tu tarea: dado un item que fue rechazado una o más veces \
+Sos el agente Documentador de un harness de desarrollo asistido por IA \
+(creación desde cero, mantención de código existente, o migración de \
+monolitos hacia FastAPI + Angular, según el proyecto). Tu tarea: dado un \
+item que fue rechazado una o más veces \
 y después se aprobó, leer el rechazo real y la resolución real (el código \
 final que ya pasó Compliance/tests), y decidir si esto vale la pena \
 documentar para que no se repita en otro item o en otro proyecto.

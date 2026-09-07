@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "tipo_flujo": "mantencion",
+    "proyecto": "backend-pedidos-existente",
+    "generado_en": "2026-09-06T10:00:00-03:00",
+    "generado_por": "felipe+claude",
+    "arquitectura_objetivo": {
+      "backend": "FastAPI"
+    }
+  },
+  "decisiones_globales": {
+    "auth_destino": "Ya resuelto en el proyecto existente (JWT bearer, ver backend/app/services/auth_service.py) -- no se re-decide acá.",
+    "prefijo_api": "/api/v1",
+    "casing_json": "camelCase",
+    "manejo_errores": "Ya resuelto en el proyecto existente (backend/app/core/exception_handlers.py) -- seguir el mismo formato, no inventar uno nuevo."
+  },
+  "items": [
+    {
+      "id": "PED-MANT-001",
+      "tipo": "backend",
+      "ticket_id": "TCK-PEDIDOS-CANCELAR-001",
+      "descripcion": "Agrega el endpoint para cancelar un pedido propio en estado 'pendiente'.",
+      "archivos_destino": [
+        "backend/app/api/v1/pedidos.py",
+        "backend/app/services/pedido_service.py"
+      ],
+      "detalle_tecnico": "Agregar POST /api/v1/pedidos/{id}/cancelar en backend/app/api/v1/pedidos.py (archivo YA EXISTENTE -- seguir la convención de nombres y de manejo de errores que ese archivo ya usa, no la convención por defecto del harness) y la función correspondiente en backend/app/services/pedido_service.py (también existente). Solo puede cancelar el dueño del pedido, y solo si el pedido está en estado 'pendiente'. Referencia obligatoria: leer ambos archivos completos antes de escribir, para mantener el mismo estilo de nombres y de manejo de errores ya usado ahí (no re-inventar convención).",
+      "criterios_aceptacion": [
+        "POST /api/v1/pedidos/{id}/cancelar de un pedido propio en estado 'pendiente' devuelve 200 y el pedido queda en estado 'cancelado'",
+        "POST /api/v1/pedidos/{id}/cancelar de un pedido ajeno devuelve 403",
+        "POST /api/v1/pedidos/{id}/cancelar de un pedido que no está en estado 'pendiente' devuelve 409 con el formato de error estándar del proyecto",
+        "Los identificadores nuevos (función/variables) siguen la convención de casing que backend/app/api/v1/pedidos.py y backend/app/services/pedido_service.py ya tenían antes de este item",
+        "La suite de tests que el backend ya tenía antes de este item sigue pasando"
+      ],
+      "depende_de": [],
+      "interfaz": {
+        "endpoint": {
+          "metodo": "POST",
+          "ruta": "/api/v1/pedidos/{id}/cancelar",
+          "request": {},
+          "response_200": { "id": "string", "estado": "string" }
+        }
+      },
+      "tests_requeridos": [
+        {
+          "archivo": "backend/tests/test_pedidos_cancelar.py",
+          "contenido": "# tests_requeridos cubre el FLUJO completo de cancelación, no solo la línea tocada (ver flujos/mantencion/README.md, regla 6):\n# éxito (dueño + pendiente), ajeno (403) y estado inválido (409) -- las 3 ramas de criterios_aceptacion.\n\ndef test_cancelar_pedido_propio_pendiente_devuelve_200_y_queda_cancelado():\n    ...\n\n\ndef test_cancelar_pedido_ajeno_devuelve_403():\n    ...\n\n\ndef test_cancelar_pedido_no_pendiente_devuelve_409():\n    ..."
+        }
+      ],
+      "estado": "pendiente"
+    }
+  ]
+}

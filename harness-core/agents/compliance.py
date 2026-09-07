@@ -19,10 +19,12 @@ from agents import ESTILO_SALIDA_BREVE
 AGENT_NAME = "compliance"
 
 SYSTEM_PROMPT = """\
-Sos el agente de Compliance de un harness de migración de monolitos hacia \
-FastAPI + Angular. Tu única tarea es revisar el código ya generado para UN \
-item del plan de migración y decidir, criterio por criterio, si cumple lo \
-que se pedía. No generás ni corregís código — solo evaluás.
+Sos el agente de Compliance de un harness de desarrollo asistido por IA \
+(creación desde cero, mantención de código existente, o migración de \
+monolitos hacia FastAPI + Angular, según el proyecto). Tu única tarea es \
+revisar el código ya generado para UN item del plan y decidir, criterio \
+por criterio, si cumple lo que se pedía. No generás ni corregís código — \
+solo evaluás.
 
 Reglas estrictas:
 - Evaluá CADA criterio de "criterios_aceptacion" por separado, contra el \
@@ -50,11 +52,19 @@ cumplidos. Si falta uno solo, es "rechazado".
 - Si un archivo esperado no existe (aparece como null en "archivos"), todo \
 criterio que dependa de ese archivo es cumplido=false.
 - No opines sobre nada que no esté en "criterios_aceptacion" (estilo, \
-mejoras posibles, etc.) — eso no es tu trabajo acá.
+mejoras posibles, etc.) — eso no es tu trabajo acá, salvo la excepción \
+puntual de "hallazgos" descrita más abajo (que no es opinar sobre ESTE \
+item, es señalar algo fuera de él).
+- Si (y SOLO si) "tipo_flujo" es "mantencion" y notás algo REAL en código \
+YA EXISTENTE fuera de "archivos" de este item (un bug, una práctica \
+insegura), o una mejora técnica posible fuera de alcance -- NO lo uses para \
+rechazar el item (eso solo lo deciden los "criterios_aceptacion"), \
+reportalo en "hallazgos" (ver formato abajo). Array vacío si no aplica -- \
+nunca inventes uno para llenar el campo.
 
-""" + ESTILO_SALIDA_BREVE + """ Aplica a "detalle" (por criterio y el \
-general) -- "veredicto" y "cumplido" siguen siendo exactos, esto es solo \
-sobre cómo redactás el texto.
+""" + ESTILO_SALIDA_BREVE + """ Aplica a "detalle" (por criterio, el \
+general, y "descripcion" de cada hallazgo) -- "veredicto" y "cumplido" \
+siguen siendo exactos, esto es solo sobre cómo redactás el texto.
 
 Formato de salida OBLIGATORIO — SOLO un objeto JSON, nada de texto antes ni \
 después, sin code fences:
@@ -64,7 +74,10 @@ después, sin code fences:
   "criterios_evaluados": [
     { "criterio": "<texto exacto del criterio>", "cumplido": true | false, "detalle": "<por qué, breve>" }
   ],
-  "detalle": "<resumen breve, cadena vacía si no hace falta>"
+  "detalle": "<resumen breve, cadena vacía si no hace falta>",
+  "hallazgos": [
+    { "tipo": "riesgo" | "recomendacion", "descripcion": "<qué encontraste y dónde>" }
+  ]
 }
 """
 
@@ -171,17 +184,20 @@ def construir_contexto(plan: dict, item_id: str, guard: AgentFileGuard) -> dict:
         "arbol_archivos_proyecto": _arbol_archivos(guard),
         "archivos_infraestructura_compartida": archivos_infraestructura,
         "archivos_reales_de_dependencias": archivos_dependencias,
-        "chequeos_deterministicos_previos": _chequeos_previos(item),
+        "chequeos_deterministicos_previos": _chequeos_previos(
+            item, plan.get("metadata", {}).get("tipo_flujo", "migracion")
+        ),
     }
 
 
-def _chequeos_previos(item: dict) -> str:
+def _chequeos_previos(item: dict, tipo_flujo: str) -> str:
     """
     Compliance solo se invoca DESPUÉS de que format_check.py (y, para
     frontend, frontend_check.py/ng build; para backend con
-    tests_requeridos, smoke_test.py/pytest) ya corrieron sobre este mismo
-    item y pasaron -- ver orchestrator.py::validar_con_format_check. Sin
-    este campo, Compliance no tiene forma de saberlo y puede rechazar por
+    tests_requeridos, smoke_test.py/pytest; para mantención,
+    convention_check.py y regression_check.py también) ya corrieron sobre
+    este mismo item y pasaron -- ver orchestrator.py::validar_con_format_check.
+    Sin este campo, Compliance no tiene forma de saberlo y puede rechazar por
     "no puedo confirmar que compila", algo que ya está confirmado (visto
     en vivo en un item frontend real, 2026-08-23: rechazo falso por exactamente
     este motivo).
@@ -205,6 +221,27 @@ def _chequeos_previos(item: dict) -> str:
             "error', 'verificacion_runtime'/'odbcinst' o 'docker compose "
             "up'/'smoke_http'/'responde 200' va cumplido=true directo, sin que "
             "necesites confirmarlo leyendo el Dockerfile/compose."
+        )
+    if tipo_flujo == "mantencion":
+        return (
+            "Este item es de mantención: además del format check (imports), el "
+            "convention check (los identificadores nuevos siguen la convención "
+            "de casing dominante que el archivo/módulo YA tenía -- criterio "
+            "relativo, no la convención fija del harness) y el regression "
+            "check (la suite de tests que el deployable YA tenía antes de este "
+            "item sigue pasando, no solo los tests_requeridos propios del "
+            "item) ya corrieron automáticamente antes de que llegaras a "
+            "validarlo, y pasaron -- si no hubieran pasado, el item nunca "
+            "habría llegado a vos. Cualquier criterio de 'sigue la convención "
+            "del archivo'/'no rompe tests existentes' va cumplido=true directo. "
+            "El scope de mantención es más chico que el de migración/creación "
+            "(menos archivos, menos pasos), pero el nivel de exigencia es el "
+            "mismo -- no le des menos rigor a un item de mantención por ser "
+            "más chico. Si al revisar 'archivos_infraestructura_compartida' o "
+            "'archivos_reales_de_dependencias' notás algo real fuera del "
+            "alcance de este item (un bug en código existente, una mejora "
+            "técnica posible), no lo uses para rechazar el item -- repórtalo "
+            "en 'hallazgos' en vez de corregirlo o exigirlo."
         )
     if item.get("tests_requeridos"):
         return (
@@ -323,4 +360,8 @@ def validar_item(project_root: str, item_id: str) -> dict:
         json.dumps(veredicto, ensure_ascii=False, indent=2),
     )
 
-    return {"estado": veredicto["veredicto"], "veredicto": veredicto}
+    return {
+        "estado": veredicto["veredicto"],
+        "veredicto": veredicto,
+        "hallazgos": resultado.get("hallazgos", []),
+    }

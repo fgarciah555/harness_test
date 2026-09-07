@@ -8,7 +8,7 @@ sin retomar la conversación de diseño primero.
 
 **Contexto:** el motor local a veces queda en bucle de razonamiento (mitigado
 parcialmente con detección de repetición + timeout + max_tokens, ver
-`engines/lm_studio.py`). Idea: agente/script que se conecte por SSH a la
+`harness-core/engines/lm_studio.py`). Idea: agente/script que se conecte por SSH a la
 máquina de LM Studio y reinicie el servicio al detectar el bucle.
 
 **A definir antes de implementar:**
@@ -33,12 +33,12 @@ timeouts de conexión recuperables). `test_engines.py --check-thinking` midió
 que `qwen3.6-35b-a3b` razona ~6.7x más verboso que `qwen3.8-27b` incluso en
 una pregunta trivial (241 vs 36 reasoning_tokens) — no fue mala suerte, es
 consistente con que ese modelo piensa de más. Se fijó `qwen3.8-27b` como
-default en `config/models.yaml`. Prioridad del agente SSH baja un escalón —
+default en `harness-core/config/models.yaml`. Prioridad del agente SSH baja un escalón —
 reconsiderar si el modelo actual también entra en bucle con uso sostenido.
 
 **Mitigación menor ya implementada (problema relacionado, no el bucle en
 sí):** un timeout de conexión ya no crashea `orchestrator.py` completo —
-`engines/base.py` define `TimeoutDelMotor`, `lm_studio.py` lo lanza en vez
+`harness-core/engines/base.py` define `TimeoutDelMotor`, `lm_studio.py` lo lanza en vez
 de propagar el timeout crudo, `executor.py` lo trata como intento fallido (0
 archivos) en vez de `bloqueado`, así el reintento/escalado a
 `executor_senior` se hace cargo solo. No resuelve el bucle en sí (sigue
@@ -88,11 +88,11 @@ preferir una fuente de verdad concreta a una respuesta adivinada.
   `decisiones_globales`/`detalle_tecnico`, que Executor ya recibe completo —
   nunca un canal nuevo hacia Executor.
 - Resultado tangible: `Harness/knowledge/` (un archivo por librería, ver
-  `knowledge/README.md`), base reusable entre proyectos.
+  `harness-core/knowledge/README.md`), base reusable entre proyectos.
 
 **Sigue sin resolver — para cuando Planner se automatice:**
 `ModelEngine.run()` sigue siendo texto plano sin function-calling
-(`engines/base.py`) — un agente investigador automatizado necesita su
+(`harness-core/engines/base.py`) — un agente investigador automatizado necesita su
 propio mecanismo de fetch, no puede ser "otro llamado más" al motor de
 Executor/Compliance.
 
@@ -149,6 +149,11 @@ preferida.
 
 ## Tres flujos de arquitectura — variante de 3 deployables con BFF sigue sin caso real
 
+**No confundir con "Los 3 flujos" de `harness-core/schemas/plan.contract.md`
+(creación/mantención/migración, tipo de trabajo) — esto es sobre topología
+de deployables (cuántos backends separados tiene un proyecto), un eje
+totalmente distinto y ortogonal.**
+
 **Contexto:** de las 3 topologías evaluadas (monolito, front→backend→DAL,
 front→BFF→BE→DAL), las primeras dos ya están resueltas e implementadas. El
 mecanismo determinístico que faltaba (`_carpeta_deployable`/
@@ -162,7 +167,7 @@ solo describe backend+DAL; capas por deployable ya validadas: BFF =
 `api/`+`client/`+`schema/`+`orquestador/` sin `repository/`/`model/`; BE =
 `api/`+`service/`+`client/`+`schema/` sin `model/`; DAL = las 4 capas
 completas, único con credenciales reales). Falta también un ejemplo de 3
-deployables backend en `schemas/plan.contract.md` (`arquitectura_objetivo`).
+deployables backend en `harness-core/schemas/plan.contract.md` (`arquitectura_objetivo`).
 
 **Estado:** sin caso real — retomar cuando aparezca un proyecto con BFF de
 verdad, no antes.
@@ -172,7 +177,7 @@ verdad, no antes.
 **Contexto:** en un proyecto real, agregar columnas a una entidad existente
 rompió la app en runtime pese a código 100% correcto — `Base.metadata
 .create_all()` no altera tablas que ya existen, solo crea las que faltan
-(ver `knowledge/sqlalchemy-2.0.md`). Hubo que correr un `ALTER TABLE`
+(ver `harness-core/knowledge/sqlalchemy-2.0.md`). Hubo que correr un `ALTER TABLE`
 manual, fuera del harness. A partir de eso, se pidió que todo proyecto que
 el harness planifique/genere use una herramienta de migraciones formal, no
 depender de `create_all()`/equivalentes — "cualquier proyecto de cualquier
@@ -249,10 +254,10 @@ end-to-end con un login real a través de nginx → backend → dal → Postgres
 (401 `INVALID_CREDENTIALS` correcto, sin datos de seed — la cadena completa
 respondió).
 
-## `config/proyectos.yaml` no se actualiza solo al inicializar un proyecto nuevo
+## `harness-core/config/proyectos.yaml` no se actualiza solo al inicializar un proyecto nuevo
 
 **Contexto:** `estado_proyectos.py` depende de que cada proyecto esté
-registrado a mano en `config/proyectos.yaml` (nombre + ruta + descripción).
+registrado a mano en `harness-core/config/proyectos.yaml` (nombre + ruta + descripción).
 `init_harness.py` ya aprendió a no dejar un proyecto sin `handoff.md` por
 puro olvido, pero sigue sin tocar el registro: nada recuerda agregar la
 fila nueva al arrancar una migración, y un proyecto no registrado es
@@ -282,7 +287,7 @@ necesitaban más tiempo — bajar el timeout no arriesga ningún caso exitoso
 histórico.
 
 **Duda abierta, a verificar con datos nuevos:** las mejoras de "divide y
-vencerás" (`checks/plan_lint.py`, señales de tamaño/ambigüedad) recién se
+vencerás" (`harness-core/checks/plan_lint.py`, señales de tamaño/ambigüedad) recién se
 aplicaron sobre un plan ya escrito — ningún proyecto se planificó todavía
 con esas señales revisadas desde el arranque. Hipótesis: items más
 chicos/menos ambiguos podrían generar más rápido y confiable (menos

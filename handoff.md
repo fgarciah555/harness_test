@@ -1471,3 +1471,71 @@ nada, hay que pedirlo también en `detalle_tecnico`"), pero acá el punto es
 que el criterio de aceptación tampoco lo estaba pidiendo explícito. No es un
 bug de `orchestrator.py`/`checks/*` — es disciplina del Planner al redactar
 `criterios_aceptacion` de items de ensamblado.
+
+## Expansión a 3 flujos: creación / mantención / migración (2026-09-06)
+
+**Pedido:** hasta acá el harness solo servía al flujo de migración. Felipe
+pidió generalizarlo para cubrir también creación de proyectos desde cero y
+mantención de proyectos existentes, sin triplicar la herramienta en 3 repos
+— un proyecto destino puede necesitar solo uno de los tres.
+
+**Decisión de arquitectura:** un solo repo, reorganizado en `harness-core/`
+(todo lo genérico: `orchestrator.py`, `agents/`, `engines/`,
+`access_control.py`, `checks/` estructurales, `knowledge/`, `config/`,
+`schemas/plan.contract.md`) + `flujos/{creacion,mantencion,migracion}/`
+(estrategia de Planner propia de cada uno, en su propio `README.md` +
+`schemas/plan.example.json`). Los tres emiten al mismo contrato — Executor/
+Compliance/checks no tienen una rama de código "por flujo", leen
+`metadata.tipo_flujo` como un dato más del plan (mismo mecanismo que ya
+usaban para `item.tipo`). Ver `schemas/plan.contract.md`, "Los 3 flujos".
+
+**Compatibilidad hacia atrás confirmada:** los proyectos reales ya migrados
+(o en curso) tienen `plan.json` sin `tipo_flujo` — `orchestrator._cargar_plan`
+lo defaultea a `"migracion"` sin tocar el archivo en disco, y
+`plan_validator.py` solo rechaza un valor presente pero inválido, nunca lo
+exige si falta.
+
+**Hallazgo de la exploración previa a implementar (importante para el
+diseño):** la mecánica central del harness (orchestrator, contrato de
+`plan.json`, ticket de reintento, permisos, construcción de contexto de
+Executor/Compliance) ya era enteramente flow-agnostic — la única mención de
+"migración de monolitos" vivía en una sola línea de framing por
+`SYSTEM_PROMPT` (`executor.py`, `arbitro.py`, `documentador.py`,
+`compliance.py`), neutralizada acá. El trabajo real no fue "generalizar
+código migración-específico" (casi no existía a nivel de lógica), fue mover
+carpetas + agregar el campo `tipo_flujo` + construir las dos piezas
+genuinamente nuevas que exige mantención (ver abajo).
+
+**Piezas nuevas, exclusivas de `tipo_flujo == "mantencion"`:**
+
+1. **`checks/convention_check.py`** — convención de casing (snake_case/
+   camelCase/PascalCase) relativa al archivo que el item toca, no la fija
+   del harness. Reconstruye la versión "antes" del archivo vía
+   `git show HEAD:<ruta>` (mantención asume un repo ya versionado), detecta
+   el casing dominante de funciones/variables de nivel superior que YA
+   tenía (excluyendo clases de la muestra — casi siempre PascalCase
+   universal, sesgaría la detección), y valida que los identificadores
+   NUEVOS lo sigan. Sin convención dominante clara (pocos identificadores,
+   empate) no bloquea nada — evita falsos positivos en archivos chicos.
+2. **`checks/regression_check.py`** — corre la suite de tests COMPLETA del
+   deployable (no solo los `tests_requeridos` propios del item, eso lo
+   sigue cubriendo `smoke_test.py` igual que en los otros flujos) para
+   confirmar que un item de mantención no rompió algo que ya andaba.
+   Reusa `smoke_test._carpeta_deployable`/`_venv_python` sin duplicar esa
+   lógica. Alcance v1: solo backend/pytest — regresión de frontend
+   (`ng test`) queda pendiente por falta de caso real, mismo criterio que
+   ya aplica el harness a otras piezas sin evidencia (ver `Pendientes.md`).
+
+Ambos corren en `orchestrator.validar_con_format_check`, condicionados a
+`tipo_flujo`, en el mismo punto que ya usan `format_check`/`smoke_test`/
+`frontend_check`/`docker_check` — un rechazo sintético corta antes de gastar
+Compliance, igual que los 4 chequeos preexistentes. `agents/compliance.py`
+(`_chequeos_previos`) declara como HECHO que ambos ya corrieron y pasaron,
+mismo mecanismo ya usado para frontend/infra/smoke test — evita que
+Compliance re-derive "sigue la convención" leyendo código a ojo.
+
+**Sin caso real todavía** para creación ni mantención — el diseño de los dos
+checks nuevos está acotado a propósito (solo casing de identificadores, solo
+backend/pytest) para no construir a ciegas más de lo que hay evidencia de
+que hace falta. Retomar y ampliar cuando corra un proyecto real de alguno de
+los dos flujos nuevos.

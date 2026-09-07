@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "tipo_flujo": "creacion",
+    "proyecto": "catalogo-productos",
+    "generado_en": "2026-09-06T10:00:00-03:00",
+    "generado_por": "felipe+claude",
+    "arquitectura_objetivo": {
+      "backend": "FastAPI",
+      "frontend": "Angular"
+    }
+  },
+  "decisiones_globales": {
+    "auth_destino": "JWT bearer. Login emite access_token (15min) + refresh_token (7d). FastAPI valida con OAuth2PasswordBearer.",
+    "prefijo_api": "/api/v1",
+    "casing_json": "camelCase",
+    "manejo_errores": "Formato de error estándar según error-handling.md: { \"error\": { \"code\": string, \"message\": string } }, códigos HTTP semánticos.",
+    "schema_bd_origen": null
+  },
+  "items": [
+    {
+      "id": "CAT-001",
+      "tipo": "backend",
+      "ticket_id": "TCK-CATALOGO-001",
+      "descripcion": "Endpoint que lista los productos activos del catálogo.",
+      "archivos_destino": [
+        "backend/app/api/v1/productos.py",
+        "backend/app/schemas/producto.py",
+        "backend/app/services/producto_service.py"
+      ],
+      "detalle_tecnico": "GET /api/v1/productos devuelve la lista de productos con estado='activo': id, nombre, precio, stock. Sin paginación en esta primera versión (agregar cuando el catálogo real lo requiera, no anticipar).",
+      "criterios_aceptacion": [
+        "GET /api/v1/productos devuelve 200 y una lista de productos con estado activo",
+        "Un producto inactivo (estado != 'activo') no aparece en la respuesta",
+        "La respuesta usa camelCase según decisiones_globales.casing_json"
+      ],
+      "depende_de": [],
+      "interfaz": {
+        "endpoint": {
+          "metodo": "GET",
+          "ruta": "/api/v1/productos",
+          "request": {},
+          "response_200": [{ "id": "string", "nombre": "string", "precio": "number", "stock": "number" }]
+        }
+      },
+      "estado": "pendiente"
+    },
+    {
+      "id": "CAT-002",
+      "tipo": "frontend",
+      "ticket_id": "TCK-CATALOGO-001",
+      "descripcion": "Servicio Angular que consume el listado de productos del catálogo.",
+      "archivos_destino": [
+        "frontend/src/app/catalogo/producto.service.ts",
+        "frontend/src/app/catalogo/producto.model.ts"
+      ],
+      "detalle_tecnico": "ProductoService (providedIn: 'root') expone listarProductos(): Observable<Producto[]>, GET a /api/v1/productos vía HttpClient. Producto: { id: string; nombre: string; precio: number; stock: number }.",
+      "criterios_aceptacion": [
+        "ProductoService.listarProductos() hace GET a /api/v1/productos usando HttpClient (no fetch())",
+        "El modelo Producto tiene los 4 campos con los tipos correctos"
+      ],
+      "depende_de": ["CAT-001"],
+      "interfaz": {
+        "servicio_expuesto": {
+          "nombre": "ProductoService",
+          "import": "app.catalogo.producto.service.ProductoService",
+          "metodos": ["listarProductos(): Observable<Producto[]>"]
+        }
+      },
+      "estado": "pendiente"
+    }
+  ],
+  "riesgos_heredados": []
+}

@@ -22,11 +22,12 @@ from agents import ESTILO_SALIDA_BREVE
 AGENT_NAME = "executor"
 
 SYSTEM_PROMPT = """\
-Sos el Executor de un harness de migración de monolitos Flask/Jinja2 hacia \
-FastAPI (backend) + Angular (frontend). Tu única tarea es generar el código \
-de UN item de un plan de migración ya decidido — no elegís arquitectura, no \
-elegís nombres ni ubicación de archivos, no tomás decisiones de diseño que \
-no estén ya especificadas en lo que se te da.
+Sos el Executor de un harness de desarrollo asistido por IA (creación desde \
+cero, mantención de código existente, o migración de monolitos hacia \
+FastAPI + Angular, según el proyecto). Tu única tarea es generar el código \
+de UN item de un plan ya decidido — no elegís arquitectura, no elegís \
+nombres ni ubicación de archivos, no tomás decisiones de diseño que no \
+estén ya especificadas en lo que se te da.
 
 Reglas estrictas:
 - Generá código SOLO para los archivos listados en "archivos_destino". No \
@@ -86,10 +87,25 @@ pensado para reusarse). Un objeto por símbolo:
 [{"nombre": "<nombre>", "import": "<ruta.exacta.Simbolo>", "firma": "<firma o definición breve>", "uso": "<para qué serviría reusarlo>"}]
 ### END INTERFAZ
 
-No escribas nada antes del primer "### FILE" ni después del último \
-"### END INTERFAZ" (o "### END FILE" si no hay interfaz que reportar). No \
-expliques lo que hiciste. No uses code fences (```) — el contenido del \
-archivo va crudo entre los marcadores.
+Si (y SOLO si) el "tipo_flujo" del proyecto (ver contexto) es "mantencion" \
+Y, generando este item, notaste algo REAL fuera de "archivos_destino" de \
+este item -- un problema en código YA EXISTENTE (bug, práctica insegura), o \
+una mejora técnica posible -- agregá al final un bloque "### HALLAZGOS": \
+NUNCA lo corrijas ni lo generes vos, el scope de este item es acotado a \
+propósito. Un objeto por hallazgo, "descripcion" en 1-2 frases concretas:
+
+### HALLAZGOS
+[{"tipo": "riesgo" | "recomendacion", "descripcion": "<qué encontraste y dónde>"}]
+### END HALLAZGOS
+
+Array vacío ("[]") u omitir el bloque directamente si no aplica -- NUNCA \
+inventes un hallazgo para llenar el campo, y NUNCA reportés acá algo que sí \
+está pedido en "detalle_tecnico" de este item.
+
+No escribas nada antes del primer "### FILE" ni después del último bloque \
+que corresponda ("### END HALLAZGOS", o "### END INTERFAZ"/"### END FILE" \
+si no hay hallazgos que reportar). No expliques lo que hiciste. No uses \
+code fences (```) — el contenido del archivo va crudo entre los marcadores.
 """
 
 
@@ -175,6 +191,12 @@ def construir_contexto(plan: dict, item_id: str, guard: AgentFileGuard | None = 
             "detalle_tecnico": item["detalle_tecnico"],
         },
         "dependencias": dependencias,
+        # Contexto mínimo, pero necesario para que Executor sepa si aplica el
+        # bloque opcional "### HALLAZGOS" del SYSTEM_PROMPT (exclusivo de
+        # mantención) -- ver schemas/plan.contract.md, "Hallazgos fuera de
+        # alcance". orchestrator.py igual vuelve a chequear tipo_flujo antes
+        # de persistir nada a disco -- esto no es el único gate.
+        "tipo_flujo": plan.get("metadata", {}).get("tipo_flujo", "migracion"),
     }
 
 
@@ -182,6 +204,8 @@ def construir_prompt_usuario(contexto: dict, feedback: str | None = None) -> str
     prompt = (
         "## decisiones_globales\n"
         f"{json.dumps(contexto['decisiones_globales'], ensure_ascii=False, indent=2)}\n\n"
+        "## tipo_flujo\n"
+        f"{contexto['tipo_flujo']}\n\n"
         "## item a ejecutar\n"
         f"{json.dumps(contexto['item'], ensure_ascii=False, indent=2)}\n\n"
         "## dependencias (solo interfaz, no la implementación)\n"
@@ -195,32 +219,36 @@ def construir_prompt_usuario(contexto: dict, feedback: str | None = None) -> str
     return prompt
 
 
-def _parsear_bloque_interfaz(texto: str) -> list[dict]:
+def _parsear_bloque_json(texto: str, marcador_inicio: str, marcador_fin: str) -> tuple[str, list]:
     """
-    Best-effort: si el bloque "### INTERFAZ" falta o está mal formado, no
-    bloquea el item (los archivos ya están bien) — simplemente no queda
-    interfaz real registrada esta vez, y los dependientes caen al fallback
-    de la interfaz predicha del Planner (ver interfaz_real.py).
-    """
-    texto = texto.strip()
-    if not texto.startswith("### INTERFAZ") or "### END INTERFAZ" not in texto:
-        return []
+    Extrae un bloque "<marcador_inicio> ... <marcador_fin>" que contiene un
+    array JSON (o un objeto suelto, normalizado a lista de 1) en cualquier
+    parte de `texto`. Devuelve (texto_sin_el_bloque, lista_parseada).
 
-    cuerpo = texto[len("### INTERFAZ"):].split("### END INTERFAZ", 1)[0]
+    Best-effort, reusado tanto para "### INTERFAZ" como para "### HALLAZGOS":
+    si el bloque falta o está mal formado, no bloquea el item (los archivos
+    ya están bien) — se devuelve el texto original intacto y una lista
+    vacía, nunca se levanta una excepción por esto.
+    """
+    if marcador_inicio not in texto or marcador_fin not in texto:
+        return texto, []
+
+    antes, _, resto = texto.partition(marcador_inicio)
+    cuerpo, _, despues = resto.partition(marcador_fin)
     try:
         datos = json.loads(cuerpo.strip())
     except json.JSONDecodeError:
-        return []
+        return texto, []
 
     if isinstance(datos, dict):
         datos = [datos]
-    return datos if isinstance(datos, list) else []
+    return antes + despues, datos if isinstance(datos, list) else []
 
 
 def parsear_respuesta(texto: str) -> dict:
     """
     Devuelve {"bloqueado": motivo} o
-    {"archivos": {ruta: contenido, ...}, "dependencia_reusable": [...]}.
+    {"archivos": {ruta: contenido, ...}, "dependencia_reusable": [...], "hallazgos": [...]}.
     Lanza ValueError si la respuesta no respeta el formato esperado — eso
     se trata como bloqueo, no como error silencioso.
     """
@@ -230,8 +258,11 @@ def parsear_respuesta(texto: str) -> dict:
         motivo = texto[len("### BLOQUEADO"):].strip(" :\n")
         return {"bloqueado": motivo or "el modelo no dio motivo"}
 
-    texto_archivos, separador, resto = texto.partition("### INTERFAZ")
-    dependencia_reusable = _parsear_bloque_interfaz(separador + resto) if separador else []
+    # "### HALLAZGOS" (si aparece) va DESPUÉS de "### INTERFAZ" en el
+    # formato pedido -- se extrae primero para no interferir con el
+    # partition de "### INTERFAZ" sobre lo que queda.
+    texto, hallazgos = _parsear_bloque_json(texto, "### HALLAZGOS", "### END HALLAZGOS")
+    texto_archivos, dependencia_reusable = _parsear_bloque_json(texto, "### INTERFAZ", "### END INTERFAZ")
 
     archivos = {}
     bloques = texto_archivos.split("### FILE:")
@@ -250,7 +281,7 @@ def parsear_respuesta(texto: str) -> dict:
             "Respuesta del modelo no contiene ni '### FILE:' ni '### BLOQUEADO'."
         )
 
-    return {"archivos": archivos, "dependencia_reusable": dependencia_reusable}
+    return {"archivos": archivos, "dependencia_reusable": dependencia_reusable, "hallazgos": hallazgos}
 
 
 def _ahora() -> str:
@@ -327,7 +358,7 @@ def ejecutar_item(
         # mismo de antes), consume el intento, y si se agotan escala solo a
         # executor_senior (mismo camino que un rechazo normal).
         _log(guard, item_id, "finalizado", f"intento fallido (0 archivos): {e}")
-        return {"estado": "finalizado", "archivos": []}
+        return {"estado": "finalizado", "archivos": [], "hallazgos": []}
     except MotorInalcanzable:
         # No se pudo conectar en absoluto (motor local caído/sin red) --
         # distinto de TimeoutDelMotor (conectó, no respondió a tiempo) y de un
@@ -375,4 +406,8 @@ def ejecutar_item(
     _escribir_interfaz_real(guard, item_id, resultado.get("dependencia_reusable", []))
 
     _log(guard, item_id, "finalizado", f"archivos escritos: {', '.join(sorted(archivos))}")
-    return {"estado": "finalizado", "archivos": sorted(archivos)}
+    return {
+        "estado": "finalizado",
+        "archivos": sorted(archivos),
+        "hallazgos": resultado.get("hallazgos", []),
+    }

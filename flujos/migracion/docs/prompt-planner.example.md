@@ -15,10 +15,12 @@ cada monolito.
   frontend-angular, security-baseline, error-handling, gcp-deployment,
   local-development, architecture-decisions).
 - Que `.harness/` ya esté inicializado en el proyecto destino
-  (`python init_harness.py /ruta/al/proyecto-destino`, ver README).
-- El contrato de `plan.json`: `schemas/plan.contract.md` de este repo del
-  harness, con `schemas/plan.example.json` como referencia de formato
-  (aplicado al fixture de pedidos, no al monolito real).
+  (`python harness-core/init_harness.py /ruta/al/proyecto-destino`, ver
+  README).
+- El contrato de `plan.json`: `harness-core/schemas/plan.contract.md` (único
+  para los 3 flujos), con `flujos/migracion/schemas/plan.example.json` como
+  referencia de formato aplicada a este flujo (fixture de pedidos, no al
+  monolito real). No olvidar `metadata.tipo_flujo: "migracion"`.
 
 ## Prompt de ejemplo
 
@@ -34,9 +36,10 @@ architecture-decisions) — el plan tiene que respetarlas al pie de la letra,
 en particular para decidir archivos_destino de cada item.
 
 El formato exacto de plan.json está documentado en
-<ruta al harness>/schemas/plan.contract.md. Usá
-<ruta al harness>/schemas/plan.example.json como referencia de cómo se ve
-aplicado (es del fixture de pedidos, no de este monolito).
+<ruta al harness>/harness-core/schemas/plan.contract.md. Usá
+<ruta al harness>/flujos/migracion/schemas/plan.example.json como
+referencia de cómo se ve aplicado (es del fixture de pedidos, no de este
+monolito) -- declará metadata.tipo_flujo: "migracion".
 
 Antes de escribir el plan:
 1. Leé el monolito completo y armame un resumen de qué hace, qué rutas/
@@ -56,6 +59,6 @@ Guardá el resultado en <ruta al proyecto destino>/.harness/config/plan.json.
 
 ## Después de esto
 
-Con `plan.json` ya escrito, el resto corre con `orchestrator.py` contra el
-modelo local (ver README, sección "Uso") — no hace falta seguir usando
-Claude Code para eso, es Executor + Compliance corriendo solos.
+Con `plan.json` ya escrito, el resto corre con `harness-core/orchestrator.py`
+contra el modelo local (ver README, sección "Uso") — no hace falta seguir
+usando Claude Code para eso, es Executor + Compliance corriendo solos.

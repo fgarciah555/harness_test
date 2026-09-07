@@ -11,7 +11,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from checks.plan_lint import lintear_plan, _avisos_tamano_relativo, _claves_citadas
 
-PLAN_EJEMPLO = Path(__file__).resolve().parent.parent / "schemas" / "plan.example.json"
+# El ejemplo de migración vive en flujos/migracion/ (específico de ese
+# flujo), no en harness-core/schemas/ (contrato genérico) -- ver
+# harness-core/tests/, dos niveles arriba de acá es la raíz del repo.
+PLAN_EJEMPLO = (
+    Path(__file__).resolve().parent.parent.parent
+    / "flujos" / "migracion" / "schemas" / "plan.example.json"
+)
 
 
 def _item_minimo(item_id, depende_de=None, interfaz=None, archivos_destino=None,

@@ -1,10 +1,17 @@
-# Harness multiagente para migración de monolitos
+# Harness multiagente para desarrollo asistido por IA
 
 Herramienta standalone (no vive dentro de ningún proyecto) que usa un motor
-de IA local (LM Studio) para automatizar parte de la migración de monolitos
-legados (Flask + Jinja2, sesión de servidor) hacia backend FastAPI +
-frontend Angular separados, siguiendo las reglas de un context pack propio
-del proyecto destino (`AGENTS.md` + `.agents/rules/`).
+de IA local (LM Studio) para automatizar parte del desarrollo de un proyecto
+destino, siguiendo las reglas de un context pack propio de ese proyecto
+(`AGENTS.md` + `.agents/rules/`). Sirve tres flujos de trabajo distintos —
+**creación** desde cero, **mantención** de código existente, y **migración**
+de un monolito legado (hoy: Flask + Jinja2, sesión de servidor) hacia backend
+FastAPI + frontend Angular separados — cada uno con su propia carpeta en
+`flujos/` y su propio `README.md` (estrategia de Planner, ejemplo de
+`plan.json`). El mecanismo común (orchestrator, agentes, checks
+determinísticos, contrato de `plan.json`) vive en `harness-core/` — ver
+"Estructura del harness" más abajo y `harness-core/schemas/plan.contract.md`,
+sección "Los 3 flujos".
 
 Para el detalle de decisiones de diseño, qué se probó y qué falta, ver
 `handoff.md` — este README es la referencia operativa (cómo instalar, cómo
@@ -15,27 +22,34 @@ correrlo), no la bitácora de diseño.
 - **Analyzer y Planner**: Felipe + Claude (hoy, Claude Code), leyendo el
   proyecto real. No son agentes automatizados — el modelo local rinde mal
   en razonamiento multi-paso, y esta parte se beneficia de contexto
-  completo del repo + criterio humano. Ver
-  `docs/prompt-planner.example.md` para un ejemplo de cómo arrancar esta
-  fase con Claude Code.
+  completo del repo + criterio humano. Cada flujo (`flujos/creacion/`,
+  `flujos/mantencion/`, `flujos/migracion/`) define su propia estrategia de
+  Planner en su `README.md` — ver `flujos/migracion/docs/
+  prompt-planner.example.md` para un ejemplo de cómo arrancar esa fase con
+  Claude Code.
 - **Executor y Compliance**: agentes reales del harness, corren con el
   modelo local (LM Studio) o con DeepSeek vía API (ver "Motor por API" más
   abajo). Executor genera código a partir de `plan.json`, Compliance lo
-  valida contra los criterios de aceptación de cada item.
+  valida contra los criterios de aceptación de cada item (según
+  `metadata.tipo_flujo` — ver `harness-core/schemas/plan.contract.md`).
 - **Documentador**: agente real, motor local siempre (nunca necesita el
   razonamiento más fuerte de DeepSeek). Cuando un item pasa a `aprobado`
   habiendo tenido rechazo(s) real(es) antes, propone un candidato de
   documentación a partir de ese error real y su resolución real — nunca
   escribe directo en `knowledge/` ni en `.agents/rules/`, deja la propuesta
   en `.harness/logs/candidatos_conocimiento.md` para que el Planner decida.
-  Ver `schemas/plan.contract.md`, sección "Candidatos de conocimiento".
-- **Format check, validación de `plan.json`, smoke test, frontend check y
-  catálogo de endpoints**: herramientas determinísticas (sin LLM) —
-  `checks/format_check.py`, `checks/plan_validator.py`,
-  `checks/smoke_test.py`, `checks/frontend_check.py`,
-  `checks/api_endpoints.py`. No son agentes, corren dentro de
-  `orchestrator.py` antes/después de Compliance (`smoke_test.py` para items
-  backend, `frontend_check.py` para items frontend).
+  Ver `harness-core/schemas/plan.contract.md`, sección "Candidatos de
+  conocimiento".
+- **Format check, convention check, regression check, validación de
+  `plan.json`, smoke test, frontend check y catálogo de endpoints**:
+  herramientas determinísticas (sin LLM) — `checks/format_check.py`,
+  `checks/convention_check.py`, `checks/regression_check.py`,
+  `checks/plan_validator.py`, `checks/smoke_test.py`,
+  `checks/frontend_check.py`, `checks/api_endpoints.py` (todo bajo
+  `harness-core/`). No son agentes, corren dentro de `orchestrator.py`
+  antes/después de Compliance (`smoke_test.py` para items backend,
+  `frontend_check.py` para items frontend, `convention_check.py`/
+  `regression_check.py` solo cuando `tipo_flujo == "mantencion"`).
   `interfaz_real.py` (compartido entre Executor y Compliance) complementa
   la `interfaz` que predice el Planner con lo que Executor reportó de
   verdad al terminar cada item.
@@ -59,7 +73,7 @@ correrlo), no la bitácora de diseño.
 ## Instalación
 
 ```bash
-pip install -r requirements.txt --break-system-packages
+pip install -r harness-core/requirements.txt --break-system-packages
 ```
 
 `engines/anthropic_api.py` está comentado por completo (motor alternativo,
@@ -68,28 +82,30 @@ funciona hoy.
 
 ## Configuración
 
-Copiá `config/models.yaml.example` a `config/models.yaml` y ajustá
-`engines.lm_studio.base_url` a tu IP real:
+Copiá `harness-core/config/models.yaml.example` a
+`harness-core/config/models.yaml` y ajustá `engines.lm_studio.base_url` a tu
+IP real:
 
 ```bash
-cp config/models.yaml.example config/models.yaml
+cp harness-core/config/models.yaml.example harness-core/config/models.yaml
 ```
 
-`config/permissions.yaml` no necesita tocarse — define qué puede leer/
-escribir cada agente y está pensado para no cambiar salvo que agregues un
-agente nuevo. Ver la tabla completa en `handoff.md`.
+`harness-core/config/permissions.yaml` no necesita tocarse — define qué
+puede leer/escribir cada agente y está pensado para no cambiar salvo que
+agregues un agente nuevo. Ver la tabla completa en `handoff.md`.
 
 ### Motor por API (DeepSeek)
 
 Si Executor/Compliance están configurados con `engine: deepseek` en
-`config/models.yaml` (por ejemplo, cuando no tenés acceso al LM Studio
-local), necesitás la variable de entorno `DEEPSEEK_API_KEY`. Dos formas:
+`harness-core/config/models.yaml` (por ejemplo, cuando no tenés acceso al LM
+Studio local), necesitás la variable de entorno `DEEPSEEK_API_KEY`. Dos
+formas:
 
 ```bash
 export DEEPSEEK_API_KEY=tu-key
 ```
 
-o dejarla en un archivo `.env` en la raíz del harness (no versionado, ver
+o dejarla en un archivo `.env` en la raíz del repo (no versionado, ver
 `.gitignore`):
 
 ```
@@ -109,10 +125,10 @@ Notas técnicas más abajo).
 Alternativa a LM Studio para cuando no tenés acceso al motor local (ej. lejos
 de tu máquina) — pensado originalmente para `executor`/`documentador`.
 `executor_senior` corre en Kimi como motor **primario** desde 2026-08-30
-(`config/models.yaml`, no un fallback); `compliance`/`arbitro` siguen en
-DeepSeek. Necesitás la variable de entorno `KIMI_API_KEY` (mismo mecanismo
-que `DEEPSEEK_API_KEY`: exportarla o dejarla en el `.env` de la raíz del
-harness).
+(`harness-core/config/models.yaml`, no un fallback); `compliance`/`arbitro`
+siguen en DeepSeek. Necesitás la variable de entorno `KIMI_API_KEY` (mismo
+mecanismo que `DEEPSEEK_API_KEY`: exportarla o dejarla en el `.env` de la
+raíz del repo).
 
 `engines/kimi_api.py` habla contra `https://api.moonshot.ai/v1` (endpoint
 oficial de Moonshot AI, internacional — si tu cuenta es de la región China,
@@ -127,8 +143,9 @@ por el que corre en el motor local en vez de `deepseek-reasoner`). Un agente
 sin modelo Kimi mapeado ahí (ej. `arbitro`, que corre en DeepSeek) no tiene
 fallback a Kimi.
 
-**Fallback automático (recomendado):** no hace falta editar `config/models.yaml`
-a mano cuando LM Studio no está disponible. Si `orchestrator.py` no logra
+**Fallback automático (recomendado):** no hace falta editar
+`harness-core/config/models.yaml` a mano cuando LM Studio no está disponible.
+Si `orchestrator.py` no logra
 conectar con el motor local configurado para `executor`/`documentador`
 (conexión rechazada/host inalcanzable — distinto de un timeout, que se trata
 como un intento normal fallido), pregunta:
@@ -140,7 +157,7 @@ No se pudo conectar a LM Studio en http://192.168.100.248:1234/v1 (...)
 ```
 
 Si aceptás, el resto de la corrida del proceso usa Kimi para ese agente —
-`config/models.yaml` en disco no cambia, el override es en memoria y
+`harness-core/config/models.yaml` en disco no cambia, el override es en memoria y
 desaparece al terminar el proceso. Con `--sin-confirmar` no hay a quién
 preguntarle, así que se corta en vez de activar Kimi solo (evita empezar a
 gastar la API sin que lo hayas pedido) — el loop escribe el motivo en
@@ -148,7 +165,7 @@ gastar la API sin que lo hayas pedido) — el loop escribe el motivo en
 (activar o no) queda en `.harness/logs/decisiones_motor.jsonl`.
 
 **Activación manual** (si preferís fijarlo de entrada, sin depender del
-fallback), en `config/models.yaml`:
+fallback), en `harness-core/config/models.yaml`:
 
 ```yaml
 executor:
@@ -156,16 +173,27 @@ executor:
   model: kimi-k2.7-code
 ```
 
-Probar la conexión: `python tests/test_engines.py executor` (después de
-cambiar el motor de `executor` en `config/models.yaml`, o tras activar el
-fallback interactivamente).
+Probar la conexión: `python harness-core/tests/test_engines.py executor`
+(después de cambiar el motor de `executor` en
+`harness-core/config/models.yaml`, o tras activar el fallback
+interactivamente).
 
 ## Uso
 
-### 1. Inicializar el harness en el proyecto a migrar
+### 0. Elegir el flujo
+
+Antes de arrancar, elegí qué carpeta de `flujos/` aplica al proyecto destino
+— `creacion/`, `mantencion/` o `migracion/` — y leé su `README.md`: cada uno
+define su propia estrategia de Planner (cómo se arma `plan.json` a partir del
+proyecto real), pero todos comparten el mismo mecanismo de ejecución
+(`harness-core/`) y el mismo contrato (`harness-core/schemas/
+plan.contract.md`). Esto determina el `metadata.tipo_flujo` que va en el
+`plan.json` del paso 2.
+
+### 1. Inicializar el harness en el proyecto destino
 
 ```bash
-python init_harness.py /ruta/al/proyecto-destino
+python harness-core/init_harness.py /ruta/al/proyecto-destino
 ```
 
 Esto crea `.harness/{config,logs,validation,interfaces}/` dentro del
@@ -173,17 +201,19 @@ proyecto — no toca nada del código del proyecto en sí.
 
 ### 2. Armar `plan.json` (fase Planner — Felipe + Claude Code)
 
-El contrato completo está en `schemas/plan.contract.md`, con un ejemplo
-aplicado al fixture de pedidos en `schemas/plan.example.json`. Para un
-ejemplo de cómo pedirle esto a Claude Code, ver
-`docs/prompt-planner.example.md`. Antes de escribir `detalle_tecnico` para un
-item que usa una librería no trivial, revisar/actualizar `knowledge/` (ver
-`knowledge/README.md`) — evita repetir investigación ya hecha y patrones de
-librería alucinados que Compliance/smoke test recién atrapan después.
+El contrato completo está en `harness-core/schemas/plan.contract.md`, con un
+ejemplo por flujo en `flujos/<flujo>/schemas/plan.example.json`. Para un
+ejemplo de cómo pedirle esto a Claude Code (flujo de migración), ver
+`flujos/migracion/docs/prompt-planner.example.md`. Antes de escribir
+`detalle_tecnico` para un item que usa una librería no trivial, revisar/
+actualizar `harness-core/knowledge/` (ver `harness-core/knowledge/
+README.md`) — evita repetir investigación ya hecha y patrones de librería
+alucinados que Compliance/smoke test recién atrapan después.
 
 El resultado se guarda en `<proyecto-destino>/.harness/config/plan.json`.
-Antes de darlo por terminado, correr `python checks/plan_lint.py
-/ruta/al/proyecto-destino` — chequeo heurístico (regex, no LLM) que detecta
+Antes de darlo por terminado, correr
+`python harness-core/checks/plan_lint.py /ruta/al/proyecto-destino` —
+chequeo heurístico (regex, no LLM) que detecta
 `detalle_tecnico`/`interfaz` citando otro item sin tenerlo en `depende_de`, e
 imports `app.*` que ningún item genera o cuyo dueño no está declarado como
 dependencia (las dos clases de bug reales vistas en migraciones reales,
@@ -196,42 +226,43 @@ aviso, no asumir que todos aplican.
 
 Crear también, desde el arranque, `<deployable>/docs/fixAplicados.md` y
 `<deployable>/docs/recomendaciones-tecnicas.md` (vacíos si todavía no hay
-ningún hallazgo) — documentos que crecen a mano durante toda la migración,
-nunca un item de `plan.json` (ver `schemas/plan.contract.md`, "Documentos
-de proyecto que crecen durante la migración").
+ningún hallazgo) — documentos que crecen a mano durante todo el proyecto,
+nunca un item de `plan.json` (ver `harness-core/schemas/plan.contract.md`,
+"Documentos de proyecto que crecen durante la migración").
 
 ### 3. Correr Executor / Compliance
 
 ```bash
 # ver el estado de todos los items
-python orchestrator.py /ruta/al/proyecto-destino --status
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --status
 
 # generar código para el próximo item pendiente con dependencias listas
-python orchestrator.py /ruta/al/proyecto-destino
+python harness-core/orchestrator.py /ruta/al/proyecto-destino
 
 # validar el próximo item que Executor ya terminó
-python orchestrator.py /ruta/al/proyecto-destino --rol compliance
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --rol compliance
 
 # forzar un item puntual en vez del que elegiría el orquestador
-python orchestrator.py /ruta/al/proyecto-destino --item PED-002 --rol executor
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --item PED-002 --rol executor
 
 # forzar executor_senior (motor más fuerte, resolutor final) para ESE item
 # puntual ya, sin esperar a que --loop agote los reintentos normales primero
-python orchestrator.py /ruta/al/proyecto-destino --item PED-002 --senior
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --item PED-002 --senior
 
 # modo automático: encadena Executor/Compliance solo hasta que no quede
 # nada ejecutable, preguntando antes de cada paso
-python orchestrator.py /ruta/al/proyecto-destino --loop
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --loop
 
 # ídem, sin preguntar (desatendido)
-python orchestrator.py /ruta/al/proyecto-destino --loop --sin-confirmar
+python harness-core/orchestrator.py /ruta/al/proyecto-destino --loop --sin-confirmar
 ```
 
 En `--loop`, un item `rechazado` (por Compliance, o por el chequeo
-determinístico de `format_check`/`frontend_check`/`smoke_test`/
-`docker_check`) actualiza un **ticket de reintento**
-(`.harness/logs/tickets/<item_id>.md` — ver `schemas/plan.contract.md`,
-"Ticket de reintento") con lo esperado (`criterios_aceptacion`), el
+determinístico de `format_check`/`convention_check`/`frontend_check`/
+`smoke_test`/`regression_check`/`docker_check`) actualiza un **ticket de
+reintento** (`.harness/logs/tickets/<item_id>.md` — ver
+`harness-core/schemas/plan.contract.md`, "Ticket de reintento") con lo
+esperado (`criterios_aceptacion`), el
 historial completo de todos los intentos y el código actual, y ese ticket
 es lo que recibe Executor para el reintento (no un feedback recalculado en
 memoria cada vez). "Hechos verificados" es la única sección del ticket que
@@ -240,7 +271,7 @@ reintento arregla una cosa y rompe otra ya corregida).
 
 Los reintentos van hasta `--max-reintentos` veces (default 1, o sea 2
 intentos totales con el executor normal, ambos con thinking off; ver Notas
-técnicas). Agotados esos, si `config/models.yaml` define un agente
+técnicas). Agotados esos, si `harness-core/config/models.yaml` define un agente
 `executor_senior` (motor más fuerte, hoy `kimi-k2.7-code`) se escala
 automáticamente a él como intento final, pasándole el ticket completo (con
 el historial de TODOS los rechazos previos, no solo el último). Pero antes
@@ -269,69 +300,83 @@ cada item por cada agente real (`executor`/`executor_senior`/`compliance`/
 sesión puntual** — desde que arrancó esta corrida de `--loop`, no el
 acumulado histórico de todas las corridas anteriores del proyecto — útil
 para detectar de un vistazo qué items oscilaron o necesitaron escalar de
-más en el trabajo que se acaba de hacer. `python orchestrator.py
-/ruta/al/proyecto-destino --metricas` muestra en cambio el historial
-completo acumulado en `.harness/logs/metricas_agentes.jsonl`, en cualquier
-momento, sin ejecutar nada.
+más en el trabajo que se acaba de hacer.
+`python harness-core/orchestrator.py /ruta/al/proyecto-destino --metricas`
+muestra en cambio el historial completo acumulado en
+`.harness/logs/metricas_agentes.jsonl`, en cualquier momento, sin ejecutar
+nada.
 
 ### 4. Ver el estado de TODOS los proyectos de un vistazo
 
 ```bash
-# resumen de todos los proyectos registrados en config/proyectos.yaml
-python estado_proyectos.py
+# resumen de todos los proyectos registrados en harness-core/config/proyectos.yaml
+python harness-core/estado_proyectos.py
 
 # detalle item por item de uno puntual
-python estado_proyectos.py --detalle "nombre-del-proyecto"
+python harness-core/estado_proyectos.py --detalle "nombre-del-proyecto"
 ```
 
-`config/proyectos.yaml` es un registro liviano y de mantenimiento manual
-(nombre + ruta + descripción corta) — agregar una entrada cuando arranca
-una migración nueva. `estado_proyectos.py` nunca guarda un snapshot: cada
-corrida relee el `.harness/` real de cada proyecto y calcula su estado con
-`orchestrator.calcular_estados()` (el mismo mecanismo que
-`orchestrator.py <proyecto> --status`, sin duplicar el algoritmo). Un
+`harness-core/config/proyectos.yaml` es un registro liviano y de
+mantenimiento manual (nombre + ruta + descripción corta) — agregar una
+entrada cuando arranca un proyecto nuevo. `estado_proyectos.py` nunca guarda
+un snapshot: cada corrida relee el `.harness/` real de cada proyecto y
+calcula su estado con `orchestrator.calcular_estados()` (el mismo mecanismo
+que `orchestrator.py <proyecto> --status`, sin duplicar el algoritmo). Un
 proyecto con ruta rota o sin `plan.json` todavía se reporta igual, no
 rompe el resumen de los demás.
 
 ## Estructura del harness
 
 ```
-harness/
-├── access_control.py       <- AgentFileGuard: único punto por el que los
-│                                agentes tocan archivos, según permissions.yaml
-├── orchestrator.py          <- decide qué item ejecutar/validar (no es un agente)
-├── interfaz_real.py          <- lee/mezcla la interfaz real que Executor reporta
-├── init_harness.py            <- crea .harness/ en un proyecto destino
-├── agents/
-│   ├── executor.py            <- genera código de un item
-│   ├── compliance.py           <- valida un item contra sus criterios
-│   └── documentador.py          <- propone candidatos de conocimiento (no escribe knowledge/ directo)
-├── engines/                     <- adapters de motor de inferencia (LM Studio, Anthropic)
-├── checks/                       <- herramientas determinísticas (sin LLM)
-│   ├── format_check.py             <- imports rotos / nombres que se pisan
-│   ├── plan_validator.py            <- reglas estructurales de plan.json (gate automático)
-│   ├── plan_lint.py                   <- avisos heurísticos sobre plan.json (manual, puede tener falsos positivos)
-│   ├── api_endpoints.py               <- catálogo de endpoints desde interfaz.endpoint del plan
-│   ├── generate_api_docs.py             <- catálogo de endpoints desde app.openapi() real
-│   ├── smoke_test.py                     <- corre pytest real contra tests_requeridos
-│   └── frontend_check.py                  <- corre `ng build` real contra items frontend
-├── config/
-│   ├── models.yaml                <- tu configuración real (no versionada como ejemplo)
-│   ├── models.yaml.example         <- template, copiá y ajustá
-│   └── permissions.yaml             <- permisos filesystem por agente
-├── schemas/
-│   ├── plan.contract.md               <- contrato de plan.json
-│   ├── plan.example.json               <- ejemplo aplicado al fixture de pedidos
-│   └── api-endpoints.example.md         <- ejemplo del catálogo de endpoints
-├── knowledge/                    <- patrones de librería verificados, uno por archivo
-│                                     (consultados/actualizados por el Planner, no por Executor)
-├── docs/
-│   └── prompt-planner.example.md      <- ejemplo de prompt para la fase Planner
-└── tests/
-    ├── test_engines.py             <- prueba manual de conexión al motor
-    ├── test_frontend_check.py       <- prueba manual de frontend_check.py (necesita Node real)
-    ├── test_plan_lint.py             <- tests sin red de plan_lint.py
-    └── test_executor_logic.py       <- tests sin red de Executor/Compliance/orchestrator
+harness_test/                         (repo raíz)
+├── harness-core/                       <- mecanismo genérico, común a los 3 flujos
+│   ├── access_control.py                 <- AgentFileGuard: único punto por el que los
+│   │                                         agentes tocan archivos, según permissions.yaml
+│   ├── orchestrator.py                    <- decide qué item ejecutar/validar (no es un agente)
+│   ├── interfaz_real.py                    <- lee/mezcla la interfaz real que Executor reporta
+│   ├── init_harness.py                      <- crea .harness/ en un proyecto destino
+│   ├── estado_proyectos.py                    <- resumen multi-proyecto
+│   ├── agents/
+│   │   ├── executor.py                          <- genera código de un item
+│   │   ├── compliance.py                         <- valida un item contra sus criterios (según tipo_flujo)
+│   │   ├── arbitro.py                             <- resuelve bloqueos de Executor dentro del plan
+│   │   └── documentador.py                        <- propone candidatos de conocimiento (no escribe knowledge/ directo)
+│   ├── engines/                                     <- adapters de motor de inferencia (LM Studio, DeepSeek, Kimi, Anthropic)
+│   ├── checks/                                        <- herramientas determinísticas (sin LLM)
+│   │   ├── format_check.py                              <- imports rotos / nombres que se pisan (los 3 flujos)
+│   │   ├── convention_check.py                            <- convención de casing relativa al archivo (solo mantención)
+│   │   ├── regression_check.py                             <- suite de tests existente sigue pasando (solo mantención)
+│   │   ├── plan_validator.py                                <- reglas estructurales de plan.json (gate automático)
+│   │   ├── plan_lint.py                                       <- avisos heurísticos sobre plan.json (manual)
+│   │   ├── api_endpoints.py                                    <- catálogo de endpoints desde interfaz.endpoint del plan
+│   │   ├── generate_api_docs.py                                  <- catálogo de endpoints desde app.openapi() real
+│   │   ├── smoke_test.py                                           <- corre pytest real contra tests_requeridos
+│   │   ├── frontend_check.py                                        <- corre `ng build` real contra items frontend
+│   │   └── docker_check.py                                            <- build/runtime real de Dockerfiles/compose
+│   ├── knowledge/                                                       <- patrones de librería verificados, uno por archivo
+│   ├── config/
+│   │   ├── models.yaml                                                    <- tu configuración real (no versionada como ejemplo)
+│   │   ├── models.yaml.example                                             <- template, copiá y ajustá
+│   │   └── permissions.yaml                                                 <- permisos filesystem por agente
+│   ├── schemas/
+│   │   ├── plan.contract.md                                                  <- contrato ÚNICO de plan.json para los 3 flujos
+│   │   └── api-endpoints.example.md                                           <- ejemplo del catálogo de endpoints
+│   └── tests/
+│       ├── test_engines.py                                                      <- prueba manual de conexión al motor
+│       ├── test_frontend_check.py                                                <- prueba manual de frontend_check.py (necesita Node real)
+│       ├── test_plan_lint.py                                                      <- tests sin red de plan_lint.py
+│       ├── test_convention_check.py                                               <- tests sin red de convention_check.py
+│       ├── test_regression_check.py                                                <- tests sin red de regression_check.py
+│       └── test_executor_logic.py                                                  <- tests sin red de Executor/Compliance/orchestrator
+├── flujos/                            <- estrategia de Planner por flujo (cada uno, su propio README.md)
+│   ├── creacion/schemas/plan.example.json
+│   ├── mantencion/schemas/plan.example.json
+│   └── migracion/
+│       ├── docs/prompt-planner.example.md, Dockerfile.Angular, Dockerfile.Python
+│       ├── templates/empaquetar.sh, start-local.sh
+│       └── schemas/plan.example.json
+├── AGENTS.md, .agents/rules/           <- context pack de EJEMPLO para proyectos destino
+└── handoff.md, Pendientes.md, README.md   <- bitácora de diseño y referencia operativa del harness
 ```
 
 Y dentro de cada proyecto destino que el harness procese:
@@ -358,10 +403,13 @@ proyecto-destino/
 ## Tests
 
 ```bash
-python tests/test_executor_logic.py   # sin red, valida parseo + selección de items
+cd harness-core
+python tests/test_executor_logic.py   # sin red, valida parseo + selección de items + tipo_flujo
 python tests/test_engines.py executor # con LM Studio corriendo, valida la conexión
 python tests/test_frontend_check.py /ruta/al/proyecto-destino  # necesita Node/Angular real
 python tests/test_plan_lint.py        # sin red, valida los avisos heurísticos sobre plan.json
+python tests/test_convention_check.py # sin red, valida la convención relativa (mantención)
+python tests/test_regression_check.py # sin red, valida la suite completa existente (mantención)
 ```
 
 ## Limitaciones conocidas / pendientes de diseño

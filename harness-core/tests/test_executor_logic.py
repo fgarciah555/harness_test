@@ -64,11 +64,16 @@ from orchestrator import (
     calcular_metricas_agentes,
     _tabla_metricas_agentes,
     KIMI_MODEL_FALLBACK,
+    _cargar_plan,
+    tipo_flujo,
+    ejecutar_con_invalidacion,
 )
 import orchestrator as orchestrator_mod
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PLAN_EJEMPLO = REPO_ROOT / "schemas" / "plan.example.json"
+# El ejemplo de migración vive en flujos/migracion/ (específico de ese
+# flujo), no en harness-core/schemas/ (contrato genérico).
+PLAN_EJEMPLO = REPO_ROOT.parent / "flujos" / "migracion" / "schemas" / "plan.example.json"
 
 
 def test_construir_contexto_solo_expone_interfaz_de_dependencias():
@@ -104,6 +109,7 @@ def test_parsear_respuesta_archivos():
             "backend/app/schemas/auth.py": "contenido del archivo 2",
         },
         "dependencia_reusable": [],
+        "hallazgos": [],
     }
     print("OK: parsear_respuesta con archivos múltiples")
 
@@ -138,6 +144,72 @@ def test_parsear_respuesta_interfaz_mal_formada_no_bloquea_el_item():
     assert resultado["archivos"] == {"x.py": "contenido"}
     assert resultado["dependencia_reusable"] == []
     print("OK: bloque ### INTERFAZ mal formado no bloquea el item, solo queda sin interfaz real")
+
+
+def test_parsear_respuesta_con_interfaz_y_hallazgos_juntos():
+    # Formato pedido: ### HALLAZGOS va DESPUÉS de ### INTERFAZ -- confirma
+    # que ninguno de los dos parsers se pisa con el otro sin importar el
+    # orden físico en que aparezcan.
+    texto = (
+        "### FILE: x.py\n"
+        "contenido\n"
+        "### END FILE\n"
+        "### INTERFAZ\n"
+        '[{"nombre": "Foo", "import": "app.x.Foo", "firma": "class Foo", "uso": "reuso"}]\n'
+        "### END INTERFAZ\n"
+        "### HALLAZGOS\n"
+        '[{"tipo": "riesgo", "descripcion": "password se compara en texto plano en auth_legacy.py"}]\n'
+        "### END HALLAZGOS\n"
+    )
+    resultado = parsear_respuesta(texto)
+    assert resultado["archivos"] == {"x.py": "contenido"}
+    assert resultado["dependencia_reusable"] == [
+        {"nombre": "Foo", "import": "app.x.Foo", "firma": "class Foo", "uso": "reuso"}
+    ]
+    assert resultado["hallazgos"] == [
+        {"tipo": "riesgo", "descripcion": "password se compara en texto plano en auth_legacy.py"}
+    ]
+    print("OK: parsear_respuesta extrae ### INTERFAZ y ### HALLAZGOS juntos, sin interferirse")
+
+
+def test_parsear_respuesta_solo_hallazgos_sin_interfaz():
+    texto = (
+        "### FILE: x.py\n"
+        "contenido\n"
+        "### END FILE\n"
+        "### HALLAZGOS\n"
+        '[{"tipo": "recomendacion", "descripcion": "extraer la validación repetida a un helper"}]\n'
+        "### END HALLAZGOS\n"
+    )
+    resultado = parsear_respuesta(texto)
+    assert resultado["archivos"] == {"x.py": "contenido"}
+    assert resultado["dependencia_reusable"] == []
+    assert resultado["hallazgos"] == [
+        {"tipo": "recomendacion", "descripcion": "extraer la validación repetida a un helper"}
+    ]
+    print("OK: parsear_respuesta extrae ### HALLAZGOS sin que haya ### INTERFAZ")
+
+
+def test_parsear_respuesta_hallazgos_mal_formado_no_bloquea_el_item():
+    texto = (
+        "### FILE: x.py\n"
+        "contenido\n"
+        "### END FILE\n"
+        "### HALLAZGOS\n"
+        "esto no es JSON válido\n"
+        "### END HALLAZGOS\n"
+    )
+    resultado = parsear_respuesta(texto)
+    assert resultado["archivos"] == {"x.py": "contenido"}
+    assert resultado["hallazgos"] == []
+    print("OK: bloque ### HALLAZGOS mal formado no bloquea el item, solo queda sin hallazgos")
+
+
+def test_parsear_respuesta_sin_bloque_hallazgos_default_lista_vacia():
+    texto = "### FILE: x.py\ncontenido\n### END FILE\n"
+    resultado = parsear_respuesta(texto)
+    assert resultado["hallazgos"] == []
+    print("OK: parsear_respuesta sin ### HALLAZGOS devuelve lista vacía por default")
 
 
 def test_parsear_respuesta_bloqueado():
@@ -887,6 +959,123 @@ def test_validar_con_format_check_rechaza_por_smoke_test_sin_llamar_a_compliance
         print("OK: validar_con_format_check rechaza por smoke test (pytest real) sin llamar a Compliance")
 
 
+def _proyecto_minimo_con_tipo_flujo(harness_root: Path, tipo_flujo_valor: str | None) -> tuple[dict, str]:
+    """
+    Arma un plan.json mínimo de 1 item (backend, sin tests_requeridos) sobre
+    el fixture de pedidos, con el tipo_flujo pedido (None = no incluir el
+    campo, para probar el default de compatibilidad hacia atrás). Devuelve
+    (plan, item_id). No crea los archivos_destino en disco a propósito --
+    format_check/convention_check solo miran archivos que existan.
+    """
+    plan = json.loads(PLAN_EJEMPLO.read_text())
+    if tipo_flujo_valor is not None:
+        plan["metadata"]["tipo_flujo"] = tipo_flujo_valor
+    else:
+        plan["metadata"].pop("tipo_flujo", None)
+    item_id = plan["items"][0]["id"]
+    (harness_root / "config" / "plan.json").write_text(json.dumps(plan, ensure_ascii=False))
+    return plan, item_id
+
+
+def test_ejecutar_con_invalidacion_persiste_hallazgos_de_executor_solo_en_mantencion():
+    original = orchestrator_mod.ejecutar_item
+
+    def fake_ejecutar_item(project_root, item_id, **kwargs):
+        return {
+            "estado": "finalizado", "archivos": [],
+            "hallazgos": [{"tipo": "riesgo", "descripcion": "hallazgo de prueba del executor"}],
+        }
+
+    orchestrator_mod.ejecutar_item = fake_ejecutar_item
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            harness = project_root / ".harness"
+            (harness / "config").mkdir(parents=True)
+            (harness / "logs").mkdir()
+            (harness / "validation").mkdir()
+            _, item_id = _proyecto_minimo_con_tipo_flujo(harness, "mantencion")
+
+            ejecutar_con_invalidacion(str(project_root), item_id, confirmar=False)
+
+            contenido = (project_root / "backend" / "docs" / "riesgos_heredados.md").read_text()
+            assert "hallazgo de prueba del executor" in contenido
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            harness = project_root / ".harness"
+            (harness / "config").mkdir(parents=True)
+            (harness / "logs").mkdir()
+            (harness / "validation").mkdir()
+            _, item_id = _proyecto_minimo_con_tipo_flujo(harness, "migracion")
+
+            ejecutar_con_invalidacion(str(project_root), item_id, confirmar=False)
+
+            assert not (project_root / "backend" / "docs" / "riesgos_heredados.md").exists()
+    finally:
+        orchestrator_mod.ejecutar_item = original
+    print(
+        "OK: ejecutar_con_invalidacion persiste hallazgos de Executor solo cuando "
+        "tipo_flujo es 'mantencion' -- gate real, no solo confiar en el prompt"
+    )
+
+
+def test_validar_con_format_check_persiste_hallazgos_de_compliance_solo_en_mantencion():
+    original = orchestrator_mod.validar_item
+
+    def fake_validar_item(project_root, item_id):
+        veredicto = {
+            "item_id": item_id, "veredicto": "aprobado", "timestamp": "t",
+            "criterios_evaluados": [], "detalle": "",
+        }
+        return {
+            "estado": "aprobado", "veredicto": veredicto,
+            "hallazgos": [{"tipo": "recomendacion", "descripcion": "hallazgo de prueba de compliance"}],
+        }
+
+    orchestrator_mod.validar_item = fake_validar_item
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            harness = project_root / ".harness"
+            (harness / "config").mkdir(parents=True)
+            (harness / "logs").mkdir()
+            (harness / "validation").mkdir()
+            _, item_id = _proyecto_minimo_con_tipo_flujo(harness, "mantencion")
+
+            # regression_check (solo corre en mantención) necesita un venv
+            # real con pytest -- symlink al venv de ESTE proceso (mismo
+            # truco que test_smoke_test_usa_el_venv_de_la_carpeta_del_item,
+            # no depende de que exista harness-core/venv en el filesystem).
+            (project_root / "backend").mkdir(parents=True)
+            venv_actual = Path(sys.executable).absolute().parent.parent
+            (project_root / "backend" / "venv").symlink_to(venv_actual, target_is_directory=True)
+
+            resultado = validar_con_format_check(str(project_root), item_id, confirmar=False)
+            assert resultado["estado"] == "aprobado"
+
+            contenido = (project_root / "backend" / "docs" / "recomendaciones-tecnicas.md").read_text()
+            assert "hallazgo de prueba de compliance" in contenido
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            harness = project_root / ".harness"
+            (harness / "config").mkdir(parents=True)
+            (harness / "logs").mkdir()
+            (harness / "validation").mkdir()
+            _, item_id = _proyecto_minimo_con_tipo_flujo(harness, "migracion")
+
+            resultado = validar_con_format_check(str(project_root), item_id, confirmar=False)
+            assert resultado["estado"] == "aprobado"
+            assert not (project_root / "backend" / "docs" / "recomendaciones-tecnicas.md").exists()
+    finally:
+        orchestrator_mod.validar_item = original
+    print(
+        "OK: validar_con_format_check persiste hallazgos de Compliance solo cuando "
+        "tipo_flujo es 'mantencion' -- gate real, no solo confiar en el prompt"
+    )
+
+
 def test_dependientes_transitivos_del_fixture_pedidos():
     plan = json.loads(PLAN_EJEMPLO.read_text())
     # PED-001 no tiene deps; PED-002/003/004 dependen de PED-001;
@@ -921,6 +1110,32 @@ def test_invalidar_dependientes_borra_veredictos_de_lo_que_depende_y_no_de_lo_de
             assert (harness / "validation" / f"{item_id}.json").exists()
 
         print("OK: invalidar_dependientes borra solo el veredicto de los dependientes reales")
+
+
+def test_cargar_plan_defaultea_tipo_flujo_a_migracion_si_falta():
+    with tempfile.TemporaryDirectory() as tmp:
+        project_root = Path(tmp)
+        harness = project_root / ".harness"
+        (harness / "config").mkdir(parents=True)
+        shutil.copy(PLAN_EJEMPLO, harness / "config" / "plan.json")  # fixture viejo, sin tipo_flujo
+
+        plan = _cargar_plan(project_root)
+        assert tipo_flujo(plan) == "migracion"
+        print("OK: _cargar_plan defaultea tipo_flujo a 'migracion' para planes sin el campo (compatibilidad)")
+
+
+def test_cargar_plan_respeta_tipo_flujo_explicito():
+    with tempfile.TemporaryDirectory() as tmp:
+        project_root = Path(tmp)
+        harness = project_root / ".harness"
+        (harness / "config").mkdir(parents=True)
+        plan_dict = json.loads(PLAN_EJEMPLO.read_text())
+        plan_dict.setdefault("metadata", {})["tipo_flujo"] = "mantencion"
+        (harness / "config" / "plan.json").write_text(json.dumps(plan_dict, ensure_ascii=False))
+
+        plan = _cargar_plan(project_root)
+        assert tipo_flujo(plan) == "mantencion"
+        print("OK: _cargar_plan respeta un tipo_flujo explícito en vez de sobreescribirlo")
 
 
 def _item_minimo(item_id, depende_de=None, interfaz=None, archivos_destino=None, criterios_aceptacion=None):
@@ -995,6 +1210,30 @@ def test_validar_plan_detecta_archivo_con_mas_de_un_dueno():
     ]}
     errores = validar_plan(plan)
     assert any("compartido.py" in e for e in errores)
+    print("OK: validar_plan detecta un archivo en archivos_destino de más de un item")
+
+
+def test_validar_plan_tipo_flujo_ausente_no_es_error():
+    # Compatibilidad hacia atrás: planes escritos antes de que tipo_flujo
+    # existiera no deben romper -- orchestrator._cargar_plan es quien
+    # después normaliza el default a "migracion".
+    plan = {"items": [_item_minimo("A")]}
+    assert validar_plan(plan) == []
+    print("OK: validar_plan no exige tipo_flujo si falta (compatibilidad hacia atrás)")
+
+
+def test_validar_plan_tipo_flujo_invalido_es_error():
+    plan = {"metadata": {"tipo_flujo": "no_existe"}, "items": [_item_minimo("A")]}
+    errores = validar_plan(plan)
+    assert any("tipo_flujo" in e for e in errores)
+    print("OK: validar_plan rechaza un tipo_flujo presente pero inválido")
+
+
+def test_validar_plan_acepta_los_3_tipos_de_flujo_validos():
+    for flujo in ("creacion", "mantencion", "migracion"):
+        plan = {"metadata": {"tipo_flujo": flujo}, "items": [_item_minimo("A")]}
+        assert validar_plan(plan) == [], f"tipo_flujo={flujo!r} no debería dar error"
+    print("OK: validar_plan acepta 'creacion'/'mantencion'/'migracion'")
     print("OK: validar_plan detecta un archivo en archivos_destino de más de un item")
 
 
@@ -2243,6 +2482,8 @@ if __name__ == "__main__":
     test_validar_con_format_check_rechaza_sin_llamar_a_compliance()
     test_dependientes_transitivos_del_fixture_pedidos()
     test_invalidar_dependientes_borra_veredictos_de_lo_que_depende_y_no_de_lo_demas()
+    test_cargar_plan_defaultea_tipo_flujo_a_migracion_si_falta()
+    test_cargar_plan_respeta_tipo_flujo_explicito()
     test_validar_plan_no_encuentra_nada_en_el_fixture_real()
     test_validar_plan_detecta_id_duplicado()
     test_validar_plan_detecta_dependencia_inexistente()
@@ -2251,8 +2492,15 @@ if __name__ == "__main__":
     test_validar_plan_detecta_criterios_aceptacion_vacio()
     test_validar_plan_detecta_interfaz_vacia_en_dependencia_citada()
     test_validar_plan_detecta_archivo_con_mas_de_un_dueno()
+    test_validar_plan_tipo_flujo_ausente_no_es_error()
+    test_validar_plan_tipo_flujo_invalido_es_error()
+    test_validar_plan_acepta_los_3_tipos_de_flujo_validos()
     test_parsear_respuesta_con_bloque_interfaz()
     test_parsear_respuesta_interfaz_mal_formada_no_bloquea_el_item()
+    test_parsear_respuesta_con_interfaz_y_hallazgos_juntos()
+    test_parsear_respuesta_solo_hallazgos_sin_interfaz()
+    test_parsear_respuesta_hallazgos_mal_formado_no_bloquea_el_item()
+    test_parsear_respuesta_sin_bloque_hallazgos_default_lista_vacia()
     test_combinar_interfaz_sin_real_devuelve_predicha_tal_cual()
     test_combinar_interfaz_real_gana_en_conflicto_y_preserva_lo_demas()
     test_combinar_interfaz_normaliza_forma_singular_legacy()
@@ -2278,6 +2526,8 @@ if __name__ == "__main__":
     test_smoke_test_venv_no_encontrado()
     test_smoke_test_carpeta_deployable_no_asume_siempre_backend()
     test_smoke_test_usa_el_venv_de_la_carpeta_del_item()
+    test_ejecutar_con_invalidacion_persiste_hallazgos_de_executor_solo_en_mantencion()
+    test_validar_con_format_check_persiste_hallazgos_de_compliance_solo_en_mantencion()
     test_validar_con_format_check_rechaza_por_smoke_test_sin_llamar_a_compliance()
     test_regenerar_catalogo_endpoints_solo_incluye_backend_aprobados()
     test_regenerar_catalogo_endpoints_se_reescribe_completo_no_append()

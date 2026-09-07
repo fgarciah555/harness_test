@@ -4,11 +4,53 @@
 (hoy: Felipe + Claude, leyendo el proyecto real) con la fase de ejecución
 automatizada (Executor + Compliance corriendo con el modelo local). Vive en
 `<proyecto>/.harness/config/plan.json` y es versionado en git — es la fuente
-de verdad de qué hay que migrar, cómo y con qué criterio de aceptación.
+de verdad de qué hay que hacer, cómo y con qué criterio de aceptación.
 
 El Planner (hoy, humano) tiene permiso `read_write` sobre `harness_config`
 (ver `access_control.py` / `config/permissions.yaml`). El Executor solo tiene
 `read` sobre ese mismo directorio: puede leer el plan pero no modificarlo.
+
+## Los 3 flujos
+
+El harness sirve tres flujos de trabajo sobre un proyecto destino —
+`flujos/creacion/`, `flujos/mantencion/`, `flujos/migracion/`, cada uno con su
+propio `README.md` describiendo la estrategia de Planner de ese flujo (cómo
+arma `plan.json` a partir del proyecto real). Un proyecto destino puede
+necesitar solo uno de los tres, por eso viven en carpetas separadas dentro de
+este mismo repo (`harness-core/` es el código genérico) y no en repos
+distintos.
+
+Los tres emiten al **mismo contrato** descrito en este documento —
+Executor/Compliance/los checks determinísticos no tienen una rama de código
+"por flujo": leen `metadata.tipo_flujo` como un dato más del plan, igual que
+ya leen `item.tipo` (backend/frontend/infra) para ramificar qué chequeo
+corre. Las únicas diferencias reales de comportamiento según el flujo son:
+
+- **`format_check.py`** (imports rotos, nombres pisados) corre siempre,
+  igual en los 3 flujos — es correctness, no convención.
+- **Convención de código**: en creación/migración es la convención fija que
+  define el harness (el Planner la traduce desde `.agents/rules/
+  naming-conventions.md` del proyecto destino a `decisiones_globales`/
+  `criterios_aceptacion`, como ya se hacía). En mantención es **relativa** al
+  archivo/módulo que el item toca — ver `convention_check.py` más abajo.
+- **Regresión**: solo en mantención se exige, además de los
+  `tests_requeridos` propios del item (smoke test, igual en los 3 flujos),
+  que la suite de tests YA EXISTENTE del deployable siga pasando — ver
+  `regression_check.py` más abajo. Migración/creación no tienen ese riesgo
+  de la misma forma: parten de una base controlada o de cero, sin una suite
+  previa ajena al propio plan que pueda romperse por un cambio en otro lado.
+- **"Más laxo" en mantención no significa menos riguroso.** El scope de un
+  item de mantención es más chico (menos archivos, menos pasos) porque el
+  cambio real es más chico — pero el nivel de exigencia (Compliance,
+  criterios de aceptación verificables, checks determinísticos previos) es
+  el mismo que en los otros dos flujos.
+
+`metadata.monolito_origen`, `item.origen` y `riesgos_heredados[]` (ver más
+abajo) solo tienen sentido cuando `tipo_flujo == "migracion"` — creación
+arranca de una base controlada por el harness sin origen que documentar, y
+mantención parte de un módulo que ya existe pero no es un "monolito a
+migrar". Ningún chequeo determinístico ni `plan_validator.py` los exige — son
+opcionales, se completan cuando aplican.
 
 ## Principio general
 
@@ -38,10 +80,11 @@ trazabilidad.
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `version` | string | Versión del *contrato* (este documento), no del plan. Hoy `"1.0"`. |
+| `tipo_flujo` | `"creacion"` \| `"mantencion"` \| `"migracion"` | Ver "Los 3 flujos" más arriba. Si falta (planes escritos antes de que este campo existiera), `orchestrator._cargar_plan` asume `"migracion"` — compatibilidad hacia atrás, no hace falta reescribir planes ya en curso. Un valor presente pero fuera de estos 3 es un error de `plan_validator.py`. |
 | `proyecto` | string | Nombre del proyecto/monolito que se está migrando. |
 | `generado_en` | string (ISO 8601) | Timestamp de cuándo se escribió/actualizó el plan. |
 | `generado_por` | string | Quién lo armó, ej. `"felipe+claude"`. |
-| `monolito_origen` | string | Ruta o descripción de dónde vive el código fuente que se migra. |
+| `monolito_origen` | string \| null | Solo aplica si `tipo_flujo == "migracion"` — ruta o descripción de dónde vive el código fuente que se migra. `null` u omitido en creación/mantención. |
 | `arquitectura_objetivo` | object | `{ "backend": "FastAPI", "frontend": "Angular" }` en el caso default (un solo deployable backend, DAL = capa `repository/` interna). Si el proyecto separa backend y DAL en deployables propios (ver `.agents/rules/backend-architecture.md`, sección "Backend y DAL como deployables separados"), agregar `"dal": "FastAPI"` explícito — es la señal que el Planner usa para escribir `depende_de`/`interfaz` de backend→dal por red en vez de import directo, y la que confirma que `archivos_destino` de esos items va a tener más de una carpeta raíz (`backend/`, `dal/`) dentro de los items `tipo: "backend"`. |
 
 ### `decisiones_globales`
@@ -131,7 +174,7 @@ aislada.
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `id` | string | Identificador único, ej. `"PED-001"`. Prefijo por dominio + número. |
-| `origen` | object | De dónde viene en el monolito: `{ "archivo": "...", "referencia": "nombre de función/ruta/template" }`. |
+| `origen` | object \| null | Solo aplica si `tipo_flujo == "migracion"` — de dónde viene en el monolito: `{ "archivo": "...", "referencia": "nombre de función/ruta/template" }`. `null` u omitido en creación/mantención (en mantención, el archivo/módulo de referencia a seguir va en `detalle_tecnico`, no acá — ver `flujos/mantencion/README.md`). |
 | `tipo` | `"backend"` \| `"frontend"` | Un item no mezcla ambos — si una feature necesita los dos lados, son dos items enlazados por `depende_de`. |
 | `descripcion` | string | Qué hace este item, en una o dos frases, para un humano. |
 | `archivos_destino` | string[] | Rutas **ya resueltas** en el proyecto destino, siguiendo `naming-conventions.md` / `backend-architecture.md` / `frontend-angular.md`. El Executor no elige nombres ni ubicación, solo escribe ahí. |
@@ -387,6 +430,67 @@ hasta que alguien lo prueba en runtime.
   describir el contexto de build y el puerto que expone, información real
   que el item dependiente necesita.
 
+### Convention check — convención relativa, exclusivo de `tipo_flujo: "mantencion"`
+
+En creación/migración la convención de código la define el harness (fija,
+traducida por el Planner desde `.agents/rules/naming-conventions.md` a
+`decisiones_globales`/`criterios_aceptacion`). En mantención el criterio es
+**relativo**: si el archivo/módulo que el item toca ya está en camelCase, lo
+que Executor agregue también debe quedar en camelCase — no la convención por
+defecto del harness. Implementado en `convention_check.py`, corre después de
+`format_check.py` y antes de smoke test/Compliance, solo cuando
+`tipo_flujo == "mantencion"`.
+
+- **Qué hace:** para cada archivo `.py` de `archivos_destino` que ya estaba
+  trackeado en `HEAD` del repo git del proyecto destino (mantención asume un
+  repo ya versionado), reconstruye su contenido "antes" (`git show
+  HEAD:<ruta>`) y detecta el casing dominante (snake_case / camelCase /
+  PascalCase) de las funciones y variables de nivel superior que YA tenía
+  (las clases se excluyen de la muestra — casi siempre PascalCase universal
+  en cualquier convención, mezclarlas sesgaría la detección). Compara contra
+  eso los identificadores NUEVOS que aparecen en el archivo "después" —
+  cualquiera que no siga la convención dominante es un rechazo sintético.
+- **Alcance v1 (acordado a propósito): solo casing de identificadores**, no
+  estilo completo (imports, docstrings, indentación). Ampliar el alcance es
+  un cambio de diseño aparte, no una extensión automática de este chequeo.
+- **Sin convención previa detectable, no bloquea nada.** Un archivo con
+  menos de 3 identificadores clasificables, o con empate real entre
+  convenciones, no tiene base suficiente para exigir nada — se omite el
+  chequeo para ese archivo (evita falsos positivos en archivos chicos).
+- **Archivo nuevo (no trackeado en `HEAD`) → se salta.** No hay convención
+  previa que heredar; ese archivo queda sujeto solo al resto del pipeline
+  (format check, Compliance vía `decisiones_globales`), igual que en
+  creación/migración.
+
+### Regression check — suite completa existente, exclusivo de `tipo_flujo: "mantencion"`
+
+"Más laxo en mantención no significa menos riguroso" — el scope de un item
+es más chico, pero el nivel de exigencia se mantiene. El smoke test
+(`tests_requeridos[]`) ya verifica lo que el ITEM declara explícitamente,
+igual en los 3 flujos; el regression check verifica algo distinto: que la
+suite de tests que el deployable **ya tenía antes de este item** siga
+pasando, aunque nadie la haya vuelto a declarar. Implementado en
+`regression_check.py`, corre después del smoke test y antes de Compliance,
+solo cuando `tipo_flujo == "mantencion"` (y el item no es frontend/infra).
+
+- **Qué hace:** corre `pytest` sin especificar archivos puntuales — la suite
+  COMPLETA del deployable (`archivos_destino[0]` determina cuál, mismo
+  criterio de `smoke_test._carpeta_deployable`, reusado sin duplicar), no
+  solo el módulo que el item tocó. Migración/creación no tienen este chequeo
+  porque parten de una base controlada o de cero, sin una suite previa ajena
+  al propio plan que un item pueda romper sin que nadie lo note.
+- **`sin_tests`, no `fallo`, si el deployable no tiene ningún test todavía**
+  (`pytest` devuelve "no tests collected") — no se penaliza la ausencia,
+  mismo criterio que ya usa `smoke_test.py`.
+- **Alcance v1: solo backend/pytest.** Regresión de frontend (`ng test`)
+  queda sin implementar por falta de caso real todavía — mismo criterio que
+  ya aplica el harness a otras piezas sin evidencia (ver `Pendientes.md`), no
+  se construye a ciegas.
+- **Timeout propio, más alto que el del smoke test** (`smoke_test.
+  TIMEOUT_SEGUNDOS=60` vs. `regression_check.TIMEOUT_SEGUNDOS=300`) — una
+  suite completa tarda más que los tests de un solo item. Valor calibrable,
+  no sagrado, mismo criterio que ya aplica a los demás timeouts del harness.
+
 ### Archivos raíz/entry-point — invisibles a `ng build`/`format_check`/smoke test
 
 **Contexto (2026-08-23):** en un proyecto real, `app.component.html`
@@ -527,6 +631,9 @@ contra el conjunto completo de `archivos_destino` de todos los items, no
 contra el filesystem del proyecto ya bootstrapeado.
 
 ### `riesgos_heredados[]`
+
+Solo aplica si `tipo_flujo == "migracion"` — lista vacía en creación/
+mantención, no hay "monolito original" del que heredar riesgos.
 
 Problemas del monolito original que se preservan a propósito en la migración
 (por alcance, tiempo, o porque tocarlos es una decisión aparte) y que no
@@ -725,10 +832,11 @@ hecho ya estaba confirmado: no es ceguera de contexto sobre el código del
 proyecto (lo de arriba), es ceguera sobre el propio pipeline del harness.
 
 `construir_contexto` (`agents/compliance.py`) agrega `chequeos_
-deterministicos_previos`: una frase fija según `tipo`/`tests_requeridos`
-del item, diciéndole a Compliance que el chequeo mecánico correspondiente
-(frontend → `ng build`; backend con `tests_requeridos` → smoke test;
-backend sin tests → format check) ya corrió y pasó. El `SYSTEM_PROMPT` lo
+deterministicos_previos`: una frase fija según `tipo`/`tests_requeridos`/
+`tipo_flujo` del item, diciéndole a Compliance que el chequeo mecánico
+correspondiente (frontend → `ng build`; backend con `tests_requeridos` →
+smoke test; backend sin tests → format check; mantención → format check +
+convention check + regression check) ya corrió y pasó. El `SYSTEM_PROMPT` lo
 trata como hecho, no como algo a re-verificar leyendo código — cualquier
 criterio textual de "compila"/"los tests pasan" va `cumplido=true` directo.
 Mismo principio que la sección de arriba (Compliance necesita más contexto
@@ -944,6 +1052,53 @@ proyecto (no investiga, no recuerda de memoria de entrenamiento).
   formada se loguea y se ignora — el veredicto real del item (ya
   `"aprobado"`) no cambia.
 
+## Hallazgos fuera de alcance — exclusivo de `tipo_flujo: "mantencion"`
+
+En mantención el scope de un item queda acotado a propósito (ver "Los 3
+flujos" arriba: "más laxo" es de tamaño, no de exigencia). Si mientras
+Executor genera código o Compliance lo valida notan algo REAL fuera de ese
+alcance — un problema en código YA EXISTENTE (bug, práctica insegura,
+deuda), o una mejora técnica posible — no lo corrigen ni lo ignoran en
+silencio: lo **reportan**, sin decidir solos qué hacer con eso.
+
+- **Formato del reporte:** un array de objetos `{"tipo": "riesgo" |
+  "recomendacion", "descripcion": "<qué encontraste y dónde>"}`.
+  - Executor: bloque opcional `### HALLAZGOS` al final de su respuesta
+    (después de `### INTERFAZ` si hay uno) — ver `agents/executor.py`.
+  - Compliance: clave opcional `"hallazgos"` en el mismo JSON de siempre —
+    ver `agents/compliance.py`. Independiente del veredicto (`aprobado`/
+    `rechazado`) — un hallazgo no es un criterio de este item.
+  - Ambos: array vacío u omitido si no aplica. El modelo nunca debe
+    inventar un hallazgo para llenar el campo, ni reportar ahí algo que sí
+    está pedido en `detalle_tecnico` del propio item.
+- **Persistencia automática, determinística (`checks/hallazgos.py`):**
+  `orchestrator.py` (`ejecutar_con_invalidacion` para Executor,
+  `validar_con_format_check` para Compliance) escribe cada hallazgo válido
+  a `<deployable>/docs/riesgos_heredados.md` (`"riesgo"`) o
+  `<deployable>/docs/recomendaciones-tecnicas.md` (`"recomendacion"`) —
+  mismo criterio de deployable que ya usa `smoke_test._carpeta_deployable`,
+  reusado sin duplicar. Append-only, un bloque por hallazgo con
+  `item_id`/fuente/timestamp, mismo criterio que `reporte_fallas.md`.
+- **`docs/riesgos_heredados.md` es un documento nuevo, separado de
+  `riesgos_heredados[]`** (el array de `plan.json`, exclusivo de migración
+  y escrito de antemano por el Planner). `plan.json` es inmutable — no
+  sirve para algo descubierto *durante* la ejecución. `riesgos_heredados.md`
+  crece con el proyecto, igual que los demás "documentos que crecen"
+  descritos abajo.
+- **`docs/recomendaciones-tecnicas.md` ya existía** (ver sección
+  siguiente) como documento manual — ahora, en mantención, también se
+  puebla solo. Sigue aceptando ediciones a mano igual que antes; el
+  mecanismo automático solo agrega entradas, nunca reescribe lo que ya hay.
+- **Doble gate, no alcanza con que el modelo se autolimite:**
+  `orchestrator.py` solo persiste hallazgos cuando `tipo_flujo(plan) ==
+  "mantencion"`, sin importar qué haya reportado el modelo — un hallazgo en
+  un run de creación/migración (no debería pasar) se descarta en silencio,
+  nunca llega a disco.
+- **Nunca bloquea el pipeline** ni cambia el veredicto de Compliance — es
+  aditivo, igual que Candidatos de conocimiento (arriba), pero sin gate
+  humano intermedio (no hace falta: registrar un hallazgo no cambia nada
+  del proyecto, a diferencia de volcar un candidato a `knowledge/`).
+
 ## Documentos de proyecto que crecen durante la migración — nunca un item de `plan.json`
 
 **Contexto (2026-08-30):** un proyecto real modeló
@@ -968,7 +1123,10 @@ completando a mano por el Planner (hoy Felipe+Claude) cuando corresponda —
 append, nunca reescribir lo que ya hay. Ejemplos conocidos: `deuda_negocio.md`
 (decisiones de negocio no técnicas), `fixAplicados.md` (comportamientos del
 origen corregidos a propósito, no preservados), `recomendaciones-tecnicas.md`
-(riesgos/observaciones abiertos para Arquitectura/Seguridad).
+(riesgos/observaciones abiertos para Arquitectura/Seguridad). En mantención
+se suma `riesgos_heredados.md` (ver "Hallazgos fuera de alcance" arriba) —
+a diferencia de los otros tres (población manual), este y
+`recomendaciones-tecnicas.md` también se pueblan automáticamente ahí.
 
 **Cómo distinguir esto de un item real:** si el contenido completo ya se
 conoce al escribir el plan (ej. "estos 3 fixes ya decidimos aplicarlos"),

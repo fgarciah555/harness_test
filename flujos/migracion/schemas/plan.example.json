@@ -1,6 +1,7 @@
 {
   "metadata": {
     "version": "1.0",
+    "tipo_flujo": "migracion",
     "proyecto": "monolito-pedidos",
     "generado_en": "2026-08-19T14:30:00-03:00",
     "generado_por": "felipe+claude",

@@ -10,6 +10,8 @@ interfaz de toda dependencia citada, un solo dueño por archivo) dejarían de
 sostenerse.
 """
 
+TIPOS_FLUJO_VALIDOS = ("creacion", "mantencion", "migracion")
+
 
 def _ids_duplicados(items: list[dict]) -> list[str]:
     vistos = set()
@@ -102,12 +104,32 @@ def _archivos_con_mas_de_un_dueno(items: list[dict]) -> list[str]:
     return errores
 
 
+def _tipo_flujo_invalido(plan: dict) -> list[str]:
+    """
+    `metadata.tipo_flujo` distingue creación/mantención/migración para que
+    Compliance y los checks determinísticos (convention_check,
+    regression_check) sepan qué set de criterios aplicar -- ver
+    schemas/plan.contract.md, "Los 3 flujos". Solo se rechaza un valor
+    PRESENTE pero inválido; si falta directamente, orchestrator.py lo
+    trata como "migracion" (compatibilidad con planes ya en curso escritos
+    antes de que este campo existiera) -- no es un error acá.
+    """
+    tipo_flujo = plan.get("metadata", {}).get("tipo_flujo")
+    if tipo_flujo is not None and tipo_flujo not in TIPOS_FLUJO_VALIDOS:
+        return [
+            f"metadata.tipo_flujo '{tipo_flujo}' inválido -- debe ser uno de "
+            f"{TIPOS_FLUJO_VALIDOS}, o directamente ausente (se asume 'migracion')"
+        ]
+    return []
+
+
 def validar_plan(plan: dict) -> list[str]:
     """Devuelve la lista de errores encontrados — vacía si el plan es válido."""
     items = plan.get("items", [])
     ids = {item["id"] for item in items}
 
     errores: list[str] = []
+    errores += _tipo_flujo_invalido(plan)
     errores += [f"id duplicado: '{d}'" for d in _ids_duplicados(items)]
     errores += _dependencias_inexistentes(items, ids)
     errores += _ciclo_dependencias(items)

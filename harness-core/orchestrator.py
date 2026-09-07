@@ -72,9 +72,12 @@ from datetime import datetime
 from pathlib import Path
 
 from checks import format_check
+from checks import convention_check
+from checks import regression_check
 from checks import smoke_test
 from checks import frontend_check
 from checks import docker_check
+from checks import hallazgos
 from checks.plan_validator import validar_plan
 from checks.api_endpoints import regenerar_catalogo_endpoints
 from engines.base import MotorInalcanzable
@@ -142,7 +145,19 @@ def _cargar_plan(project_root: Path) -> dict:
         detalle = "\n".join(f"  - {e}" for e in errores)
         raise ValueError(f"plan.json inválido ({ruta}):\n{detalle}")
 
+    # Compatibilidad hacia atrás: proyectos ya en curso tienen plan.json sin
+    # tipo_flujo (era el único flujo que existía). plan_validator.validar_plan
+    # ya solo rechaza un valor presente pero inválido -- acá se normaliza el
+    # default para que el resto de orchestrator.py (y Compliance) tengan
+    # siempre el campo, sin repetir el fallback en cada lugar que lo lee.
+    plan.setdefault("metadata", {}).setdefault("tipo_flujo", "migracion")
+
     return plan
+
+
+def tipo_flujo(plan: dict) -> str:
+    """`metadata.tipo_flujo` ya normalizado por _cargar_plan -- ver ahí."""
+    return plan.get("metadata", {}).get("tipo_flujo", "migracion")
 
 
 def _leer_eventos_executor(project_root: Path) -> dict[str, list[dict]]:
@@ -432,7 +447,8 @@ def ejecutar_con_invalidacion(
     regenerarlo. Punto único por el que debería pasar cualquier llamada a
     Executor en orchestrator.py -- también el único punto que ofrece el
     fallback a Kimi si el motor local de `agente` está inalcanzable (ver
-    _con_fallback_motor_local).
+    _con_fallback_motor_local), y el único que persiste "hallazgos" (ver
+    checks/hallazgos.py) que Executor haya reportado.
     """
     root = Path(project_root).resolve()
     veredicto_previo = _leer_veredictos(root).get(item_id)
@@ -454,6 +470,17 @@ def ejecutar_con_invalidacion(
                 f"  -> {item_id} ya estaba aprobado antes de este reintento; se invalidó el "
                 f"veredicto de {len(invalidados)} item(s) que dependían de él: {', '.join(sorted(invalidados))}"
             )
+
+    if resultado.get("estado") == "finalizado":
+        plan = _cargar_plan(root)
+        if tipo_flujo(plan) == "mantencion":
+            # Gate real, no solo confiar en que el prompt de Executor se
+            # autolimitó -- un hallazgo reportado en un run que NO es de
+            # mantención (no debería pasar, pero por las dudas) se descarta
+            # acá, nunca se persiste a disco. Ver schemas/plan.contract.md,
+            # "Hallazgos fuera de alcance".
+            item = _item_por_id(plan, item_id)
+            hallazgos.registrar_hallazgos(project_root, item, "executor", resultado.get("hallazgos", []))
 
     return resultado
 
@@ -840,18 +867,28 @@ def validar_con_format_check(project_root: str, item_id: str, confirmar: bool = 
     corre filtros determinísticos y gratis (sin LLM):
     1. format check (ver format_check.py) — imports rotos, nombres que se
        pisan (solo aplica a archivos .py).
-    2. según `tipo` del item:
+    2. si `tipo_flujo == "mantencion"`: convention check (ver
+       convention_check.py) — los identificadores NUEVOS que Executor
+       agregó respetan la convención de casing dominante que el archivo ya
+       tenía (relativa, no la convención fija del harness).
+    3. según `tipo` del item:
        - backend: smoke test (ver smoke_test.py) — pytest de verdad, solo si
          el item declara `tests_requeridos` en plan.json.
        - frontend: frontend check (ver frontend_check.py) — compila el
          proyecto Angular real (`ng build`), siempre (no es opcional como el
          smoke test de backend).
+    4. si `tipo_flujo == "mantencion"` y el item no es frontend/infra:
+       regression check (ver regression_check.py) — la suite de tests YA
+       EXISTENTE del deployable sigue pasando, no solo los
+       `tests_requeridos` propios del item (mantención: scope más chico,
+       mismo rigor, ver schemas/plan.contract.md).
     Si cualquiera encuentra algo, arma un veredicto 'rechazado' sintético
     (ver _veredicto_sintetico_rechazado) y ni siquiera llama a Compliance.
     """
     root = Path(project_root).resolve()
     plan = _cargar_plan(root)
     item = _item_por_id(plan, item_id)
+    flujo = tipo_flujo(plan)
 
     errores = format_check.verificar(project_root, item["archivos_destino"])
     if errores:
@@ -864,6 +901,19 @@ def validar_con_format_check(project_root: str, item_id: str, confirmar: bool = 
                 f"({len(errores)} problema(s)) — no se gastó ninguna llamada al modelo."
             ),
         )
+
+    if flujo == "mantencion":
+        errores_convencion = convention_check.verificar(project_root, item["archivos_destino"])
+        if errores_convencion:
+            return _veredicto_sintetico_rechazado(
+                root, item, fuente="convention_check",
+                criterio="Los identificadores nuevos siguen la convención de casing dominante del archivo/módulo existente (chequeo determinístico, sin LLM)",
+                detalles=errores_convencion,
+                resumen=(
+                    f"Rechazado por convention check determinístico antes de llegar a Compliance "
+                    f"({len(errores_convencion)} problema(s)) — no se gastó ninguna llamada al modelo."
+                ),
+            )
 
     if item.get("tipo") == "frontend":
         resultado_fe = frontend_check.verificar(project_root)
@@ -904,8 +954,26 @@ def validar_con_format_check(project_root: str, item_id: str, confirmar: bool = 
                 ),
             )
 
+        if flujo == "mantencion":
+            resultado_regresion = regression_check.correr(project_root, item)
+            if resultado_regresion["estado"] in ("fallo", "error"):
+                return _veredicto_sintetico_rechazado(
+                    root, item, fuente="regression_check",
+                    criterio="La suite de tests ya existente del deployable sigue pasando (regression check, pytest real, sin LLM)",
+                    detalles=[resultado_regresion["detalle"]],
+                    resumen=(
+                        "Rechazado por el regression check (suite completa existente) antes de "
+                        "llegar a Compliance — no se gastó ninguna llamada al modelo."
+                    ),
+                )
+
     _registrar_metrica_agente(root, item_id, "compliance")
     resultado = validar_item(project_root, item_id)
+    if flujo == "mantencion":
+        # Igual que en ejecutar_con_invalidacion: gate real sobre tipo_flujo,
+        # no solo confiar en que Compliance se autolimitó. Independiente del
+        # veredicto -- un hallazgo es ortogonal a si el item aprobó o no.
+        hallazgos.registrar_hallazgos(project_root, item, "compliance", resultado.get("hallazgos", []))
     if resultado.get("estado") == "aprobado":
         if item.get("tipo") == "backend":
             regenerar_catalogo_endpoints(project_root)
