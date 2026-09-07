@@ -10,7 +10,7 @@ Aislamiento: mínimo por ahora -- timeout al proceso. Nada de tocar la base
 de datos real es responsabilidad del contenido del test (usar
 get_settings(env_path=".env.pytest") o el equivalente del proyecto), este
 módulo no lo fuerza. No hay sandboxing real de proceso/SO -- ver
-Pendientes.md, "Sandboxing real".
+docs/pendientes.md, "Sandboxing real".
 """
 import subprocess
 from pathlib import Path
@@ -23,7 +23,7 @@ def _carpeta_deployable(item: dict) -> str:
     Carpeta del deployable al que pertenece este item -- primer segmento de su
     propio archivos_destino[0] (ej. "backend", "dal"), no un valor fijo. Permite
     que un plan con varios deployables backend (ej. backend/ + dal/, ver
-    Pendientes.md "Tres flujos de arquitectura") corra smoke test en el venv y
+    docs/pendientes.md "Tres flujos de arquitectura") corra smoke test en el venv y
     directorio de cada uno, no siempre el mismo. Sin archivos_destino (fixtures
     de test viejos), cae a "backend" -- comportamiento previo, sin romper nada.
     """

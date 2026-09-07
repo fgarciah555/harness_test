@@ -4,7 +4,7 @@ ejecución puesto (equivalente a `chmod +x`) -- sin esto, un item de
 plan.json que pide un script ejecutable siempre falla ese criterio en
 Compliance, porque un LLM que solo lee texto no puede setear ni ver el bit
 de permisos. Bug real encontrado agregando un item de infraestructura con
-script bash, 2026-08-31, ver Harness/handoff.md.
+script bash, 2026-08-31, ver Harness/docs/handoff.md.
 """
 import os
 import stat

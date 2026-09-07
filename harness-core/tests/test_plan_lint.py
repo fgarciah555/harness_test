@@ -132,7 +132,7 @@ def test_lintear_plan_ignora_menciones_de_dos_segmentos_tipo_app_py():
 def test_lintear_plan_contra_fixture_real_son_solo_referencias_hacia_adelante():
     plan = json.loads(PLAN_EJEMPLO.read_text())
     avisos = lintear_plan(plan)
-    # El fixture de pedidos es un plan ya probado end-to-end (ver handoff.md) —
+    # El fixture de pedidos es un plan ya probado end-to-end (ver docs/handoff.md) —
     # los únicos avisos esperables son menciones hacia adelante en prosa
     # ("usado por PED-005"), nunca un import huérfano ni un import de módulo
     # real sin depender de su dueño.

@@ -404,7 +404,7 @@ login/reportes/CSV/admin verificados con `curl` real y Postgres local real.
 
 ## Reorganización de bitácora (2026-08-24)
 
-`Pendientes.md` quedó exclusivamente para ítems de diseño todavía abiertos.
+`pendientes.md` quedó exclusivamente para ítems de diseño todavía abiertos.
 Las secciones de bitácora ya resueltas (bugs/decisiones del harness con
 `Estado: implementado/resuelto/descartado`) migraron a este archivo. El
 contenido específico de negocio de cada migración (bugs de negocio,
@@ -455,7 +455,7 @@ evidencia, no solo supuesto.
 que un humano tuvo que intervenir en el ciclo Executor-Compliance, y Felipe
 prefiere mantenerse en el loop para decisiones de reintento en vez de
 automatizar Analyzer/Planner (ver "Agente investigador de tecnologías" y
-"Dividir items grandes", ambas en `Pendientes.md`, pausadas por la misma
+"Dividir items grandes", ambas en `pendientes.md`, pausadas por la misma
 preferencia).
 
 **Implementado:** un gate de decisión en `orchestrator.py::loop()`, antes de
@@ -752,7 +752,7 @@ advisory.
 
 Para permitir que "backend" y "dal" (o cualquier topología con más de una
 carpeta `tipo: "backend"`) corran como deployables de verdad (carpetas/venvs
-propios, comunicación por red) — variante ya prevista en `Pendientes.md`
+propios, comunicación por red) — variante ya prevista en `pendientes.md`
 pero sin caso real hasta este día:
 
 - `checks/smoke_test.py` y `checks/generate_api_docs.py` ya no asumen una
@@ -1406,7 +1406,7 @@ rápido sin haber arriesgado ningún caso exitoso histórico. Queda como
 pendiente explícito revisar con `--metricas` en la próxima migración real y
 reconsiderar el valor si las mejoras de "divide y vencerás" (recién
 aplicadas sobre planes ya escritos, no desde el arranque) cambian la
-distribución de duraciones (ver `Pendientes.md`).
+distribución de duraciones (ver `pendientes.md`).
 
 ## Dos bugs reales del harness encontrados agregando un item de infra (2026-08-31)
 
@@ -1524,7 +1524,7 @@ genuinamente nuevas que exige mantención (ver abajo).
    Reusa `smoke_test._carpeta_deployable`/`_venv_python` sin duplicar esa
    lógica. Alcance v1: solo backend/pytest — regresión de frontend
    (`ng test`) queda pendiente por falta de caso real, mismo criterio que
-   ya aplica el harness a otras piezas sin evidencia (ver `Pendientes.md`).
+   ya aplica el harness a otras piezas sin evidencia (ver `pendientes.md`).
 
 Ambos corren en `orchestrator.validar_con_format_check`, condicionados a
 `tipo_flujo`, en el mismo punto que ya usan `format_check`/`smoke_test`/

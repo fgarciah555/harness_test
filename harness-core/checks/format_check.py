@@ -4,7 +4,7 @@ Executor acaba de generar, antes de gastar una llamada a Compliance. No
 ejecuta nada del código generado — solo análisis estático (ast) — así que no
 necesita las dependencias del proyecto instaladas ni toca ninguna base de
 datos. Es la primera pieza de "Format check" del diseño original del
-harness (ver handoff.md), acotada a lo que encontramos en la práctica
+harness (ver docs/handoff.md), acotada a lo que encontramos en la práctica
 migrando un backend FastAPI real: imports internos rotos y nombres que se pisan.
 
 No es un agente — no pasa por AgentFileGuard, igual que orchestrator.py.
@@ -37,7 +37,7 @@ Cuatro chequeos:
 Deliberadamente NO valida que los imports de librerías de terceros
 (fastapi, sqlalchemy, etc.) resuelvan a un paquete instalado — eso sí
 requeriría las dependencias del proyecto destino, que es una capacidad que
-el harness no tiene hoy (ver Pendientes.md, "Smoke test real", para la
+el harness no tiene hoy (ver docs/pendientes.md, "Smoke test real", para la
 versión que sí ejecuta código).
 """
 import ast

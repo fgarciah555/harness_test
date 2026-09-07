@@ -11,7 +11,7 @@ pero inexistentes o incorrectos (`Settings(env_file=...)` en vez de
 en vez de `db.scalars(stmt).first()`) — el mismo tipo de riesgo que ya se
 había visto con imports internos alucinados (`DomainError`), pero de
 conocimiento de librería en vez de conocimiento del proyecto. Ver
-`handoff.md`, sección "Tercera prueba real (2026-08-21)", y `Pendientes.md`,
+`docs/handoff.md`, sección "Tercera prueba real (2026-08-21)", y `docs/pendientes.md`,
 sección "Agente investigador de tecnologías", para el contexto de decisión.
 
 ## Quién la usa y cómo

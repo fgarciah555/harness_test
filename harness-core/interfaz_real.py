@@ -80,7 +80,7 @@ def podar_predicha_no_generada(predicha: dict, codigo_generado: str | None) -> d
     caso en que la predicha describe un símbolo que Executor nunca
     implementó bajo ese nombre y que, sin esta poda, combinar_interfaz()
     dejaría sobrevivir indefinidamente al lado de la real (ver detalle en
-    handoff.md y plan.contract.md).
+    docs/handoff.md y plan.contract.md).
 
     A propósito NO poda lo que la real no vuelve a mencionar pero SÍ existe
     en el código (ver test_combinar_interfaz_normaliza_forma_por_nombre_sin_perder_entradas):

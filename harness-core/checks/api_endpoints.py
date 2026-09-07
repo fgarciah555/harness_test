@@ -78,7 +78,7 @@ def regenerar_catalogo_endpoints(project_root: str) -> Path:
         if not endpoint:
             continue
         # Algunos items agrupan varios endpoints bajo un mismo router (ver
-        # plan.contract.md, "Revisiones sucesivas..." y Pendientes.md,
+        # plan.contract.md, "Revisiones sucesivas..." y docs/pendientes.md,
         # "api_endpoints.py no funciona con planes que agrupan endpoints") --
         # interfaz.endpoint puede venir como un dict (un endpoint) o una
         # list[dict] (varios). Iterar siempre como lista para no asumir una

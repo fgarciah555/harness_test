@@ -3,14 +3,14 @@
 Migrar un monolito legado (hoy: Flask + Jinja2, sesión de servidor) hacia
 backend FastAPI + frontend Angular separados, siguiendo `AGENTS.md` +
 `.agents/rules/` del proyecto destino. Es el flujo original del harness — el
-más probado en producción (ver `handoff.md` en la raíz del repo).
+más probado en producción (ver `docs/handoff.md` en la raíz del repo).
 
 `metadata.tipo_flujo` de este flujo es `"migracion"`.
 
 ## Estrategia de Planner
 
 El Planner (hoy Felipe + Claude Code, no automatizado — ver
-`../../handoff.md`, "Decisión de arquitectura importante") arma `plan.json`
+`../../docs/handoff.md`, "Decisión de arquitectura importante") arma `plan.json`
 leyendo el monolito origen real, no de memoria:
 
 1. **Resumen del monolito**: qué hace, qué rutas/vistas tiene, cómo maneja

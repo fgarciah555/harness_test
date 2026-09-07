@@ -45,7 +45,7 @@ engines:
     base_url: "http://<IP-de-tu-vEthernet-WSL>:1234/v1"
   deepseek:
     # la api key se lee de la variable de entorno DEEPSEEK_API_KEY, no va acá.
-    # deepseek-reasoner ya en uso por compliance (ver Pendientes.md, "¿Compliance
+    # deepseek-reasoner ya en uso por compliance (ver docs/pendientes.md, "¿Compliance
     # debería usar deepseek-reasoner?") -- cuando se automatice Planner/
     # entrevistador (necesitan razonamiento multi-paso), mismo criterio.
   kimi:

@@ -101,7 +101,7 @@ estado de la base.
 **Encontrado en:** 2026-08-25 — una entidad de pruebas ganó dos columnas
 nuevas; el código generado y aprobado por Compliance rompió dos endpoints
 contra la base real (con filas ya existentes) hasta correr el `ALTER TABLE`
-de arriba. Ver también `Pendientes.md`, "Gestión de esquema de base de
+de arriba. Ver también `docs/pendientes.md`, "Gestión de esquema de base de
 datos con herramienta de migraciones formal" — este caso fue el disparador
 de ese pendiente.
 

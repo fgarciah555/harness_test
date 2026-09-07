@@ -4,7 +4,7 @@ correr manualmente cuando el proyecto (o una tanda de items backend) está
 lista para documentar. A diferencia de api_endpoints.py (que lee
 interfaz.endpoint de plan.json, una predicción del Planner que puede quedar
 desalineada o directamente vacía si el plan agrupa varios endpoints por
-item, ver Pendientes.md), esto le pide el OpenAPI a la app real generada
+item, ver docs/pendientes.md), esto le pide el OpenAPI a la app real generada
 por Executor — fuente de verdad exacta, cero desalineación posible con el
 código real.
 
@@ -23,7 +23,7 @@ Genera dos artefactos en docs/ del proyecto destino:
 Uso: python generate_api_docs.py <project_root> [base_url]
 -- itera automáticamente todas las carpetas backend distintas que aparecen en
 plan.json (ver `_carpetas_backend_del_plan`), una app FastAPI por deployable
-(ej. backend/ + dal/, ver Pendientes.md "Tres flujos de arquitectura"). Sin
+(ej. backend/ + dal/, ver docs/pendientes.md "Tres flujos de arquitectura"). Sin
 plan.json legible, cae a una sola corrida sobre "backend" (comportamiento
 previo, proyectos de un solo deployable).
 """

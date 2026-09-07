@@ -275,7 +275,7 @@ def _registrar_metrica_agente(project_root: Path, item_id: str, agente: str):
     (executor, executor_senior, compliance, arbitro, documentador) -- no los
     chequeos determinísticos (format_check/frontend_check/smoke_test/
     docker_check), que no son "agentes" en el vocabulario del harness (ver
-    "Decisión de arquitectura importante" en handoff.md). Cuenta intentos,
+    "Decisión de arquitectura importante" en docs/handoff.md). Cuenta intentos,
     no resultados -- se registra sea cual sea el desenlace (aprobado,
     rechazado, bloqueado, motor_inalcanzable). Base para el resumen que
     imprime `loop()` al terminar y `--metricas` (ver `calcular_metricas_agentes`).

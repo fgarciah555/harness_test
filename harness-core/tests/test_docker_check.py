@@ -2,7 +2,7 @@
 docker_check.verificar() no debe exigir Docker disponible para un item
 tipo:"infra" cuyo archivos_destino no incluye ningún Dockerfile/
 docker-compose.yml (ej. un script de arranque local) -- bug real encontrado
-2026-08-31, ver Harness/handoff.md.
+2026-08-31, ver Harness/docs/handoff.md.
 """
 import sys
 import tempfile

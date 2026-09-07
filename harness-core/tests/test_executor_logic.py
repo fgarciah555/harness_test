@@ -1452,7 +1452,7 @@ def test_regenerar_catalogo_endpoints_solo_incluye_backend_aprobados():
         contenido = ruta.read_text()
 
         assert "## POST /api/v1/auth/login" in contenido
-        assert "COAS" not in contenido  # nada de otro proyecto se cuela
+        assert "OTRO-PROYECTO" not in contenido  # nada de otro proyecto se cuela
         assert "PED-002" not in contenido and "PED-003" not in contenido
         assert "PED-001" in contenido
         print("OK: regenerar_catalogo_endpoints solo incluye backend con veredicto aprobado vigente")

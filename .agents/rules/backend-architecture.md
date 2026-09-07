@@ -173,7 +173,7 @@ identity map de SQLAlchemy trata dos filas con el mismo valor de PK declarado co
 LA MISMA entidad, así que un `select(Usuario).where(ca_rut==rut).scalars().all()`
 con 2 filas reales en la BD devuelve solo 1 objeto (la primera cargada) — sin
 excepción, sin warning, el error queda enterrado en un dato de negocio incorrecto
-(ver `Harness/handoff.md`, caso de un item de autenticación con multi-comercio).
+(ver `Harness/docs/handoff.md`, caso de un item de autenticación con multi-comercio).
 Antes de declarar
 `primary_key=True` en una columna (sola o compuesta) por ser "la identidad lógica"
 de la entidad, hay que confirmar que ESA combinación de columnas es realmente única

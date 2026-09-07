@@ -15,7 +15,7 @@ parecida) — por eso es una herramienta de apoyo que el Planner corre a mano
 antes de dar un plan por terminado, no un gate automático.
 
 Detecta cinco clases de bug real ya vistas en proyectos migrados con este
-harness (ver Harness/handoff.md y Pendientes.md, "Dividir items grandes..."):
+harness (ver Harness/docs/handoff.md y docs/pendientes.md, "Dividir items grandes..."):
 
 1. **Dependencia no declarada.** detalle_tecnico/criterios_aceptacion/
    interfaz de un item menciona el ID de otro item, pero ese id no está en
@@ -26,12 +26,12 @@ harness (ver Harness/handoff.md y Pendientes.md, "Dividir items grandes..."):
    de un item menciona un import "app.x.y.z" cuyo módulo (app.x.y) no lo
    genera NINGÚN item del plan (import huérfano — típicamente falta un item
    de infraestructura, ver "infraestructura que nadie pidió explícitamente"
-   en handoff.md), o lo genera un item que no está en depende_de
+   en docs/handoff.md), o lo genera un item que no está en depende_de
    (mismo bug que el punto 1, mirado desde el import en vez del ID citado
    en prosa).
 3. **Item muy por encima de la mediana del propio plan** (archivos_destino
    o criterios_aceptacion) — candidato a dividir en items más chicos. No es
-   un número fijo (ver Pendientes.md: "más de 5 items" ya se descartó como
+   un número fijo (ver docs/pendientes.md: "más de 5 items" ya se descartó como
    arbitrario) — se compara contra la mediana de ESTE plan, no un umbral
    universal. Señal débil a propósito: el tamaño solo no predice bien la
    oscilación (ver punto 4), pero vale la pena marcarlo igual. Además del
@@ -139,7 +139,7 @@ def _modulo_mas_especifico_conocido(import_encontrado: str, modulos: dict[str, s
 def _avisos_tamano_relativo(items: list[dict]) -> list[str]:
     """
     Compara cada item contra la MEDIANA del propio plan, no un número fijo
-    (ver Pendientes.md: un umbral universal tipo "más de 5 items" ya se
+    (ver docs/pendientes.md: un umbral universal tipo "más de 5 items" ya se
     descartó como arbitrario porque no se ajusta a la escala real de cada
     plan). Se salta en planes chicos, donde la mediana no es representativa.
     """

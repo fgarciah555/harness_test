@@ -18,7 +18,7 @@ versionado. Si un archivo de `archivos_destino` no está trackeado en HEAD
 (es nuevo, no una modificación), se salta el chequeo relativo para ese
 archivo -- no hay convención previa que heredar.
 
-Alcance v1 (acordado explícitamente, ver Pendientes.md si se quiere
+Alcance v1 (acordado explícitamente, ver docs/pendientes.md si se quiere
 ampliar): solo casing de identificadores (snake_case / camelCase /
 PascalCase) de funciones y variables de NIVEL SUPERIOR. Se excluyen las
 clases de la muestra de detección -- casi siempre PascalCase universal en

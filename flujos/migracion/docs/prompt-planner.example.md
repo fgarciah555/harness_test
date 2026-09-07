@@ -2,7 +2,7 @@
 
 Este harness deja el Analyzer y el Planner en manos de Felipe + Claude
 (hoy Claude Code), leyendo el proyecto real — no son agentes automatizados
-del modelo local (ver `handoff.md`, sección "Decisión de arquitectura
+del modelo local (ver `docs/handoff.md`, sección "Decisión de arquitectura
 importante"). Este archivo es un ejemplo del prompt inicial para arrancar
 esa fase con un proyecto real, no un template a copiar literal — ajustalo a
 cada monolito.

@@ -29,18 +29,18 @@ def init_harness(project_root: str):
     if not handoff.exists():
         # Bitácora PROPIA de este proyecto -- nunca la migración de otro
         # proyecto ni el mecanismo del harness en sí (eso vive en
-        # Harness/handoff.md, el repo del harness, no acá). Regla (ver
-        # Harness/handoff.md, "Ticket de reintento", 2026-08-30):
+        # Harness/docs/handoff.md, el repo del harness, no acá). Regla (ver
+        # Harness/docs/handoff.md, "Ticket de reintento", 2026-08-30):
         # bug/decisión del HARNESS (orchestrator.py, agents/*, checks/*,
-        # engines/*) -> Harness/handoff.md, aunque se haya encontrado
+        # engines/*) -> Harness/docs/handoff.md, aunque se haya encontrado
         # migrando este proyecto. Bug de negocio/UI/decisión propia de
         # ESTE proyecto -> acá.
         #
         # Nombre del título: si ya existe plan.json (init_harness corrido
-        # de nuevo sobre un proyecto en marcha, ver oms-srv-dal-delivery-
-        # configuration, 2026-08-30), usar metadata.proyecto de ahí -- el
-        # nombre de la carpeta puede ser genérico (ej. "destino") y no
-        # decir nada del proyecto real.
+        # de nuevo sobre un proyecto en marcha, visto en un proyecto real,
+        # 2026-08-30), usar metadata.proyecto de ahí -- el nombre de la
+        # carpeta puede ser genérico (ej. "destino") y no decir nada del
+        # proyecto real.
         nombre_proyecto = root.name
         plan_path = harness_dir / "config" / "plan.json"
         if plan_path.exists():
@@ -56,7 +56,7 @@ def init_harness(project_root: str):
             "proyecto, no del harness en sí.\n\n"
             "Un bug o mejora del HARNESS (orchestrator.py, agents/*, "
             "checks/*, engines/*, schemas/plan.contract.md) encontrado "
-            "migrando este proyecto va en `Harness/handoff.md` (el repo del "
+            "migrando este proyecto va en `Harness/docs/handoff.md` (el repo del "
             "harness), no acá, aunque la evidencia haya salido de acá.\n"
         )
 

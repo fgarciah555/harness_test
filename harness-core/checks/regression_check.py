@@ -19,7 +19,7 @@ lógica.
 
 Alcance v1: solo backend/pytest. Regresión de frontend (`ng test`) queda
 sin implementar por falta de caso real todavía -- mismo criterio que el
-harness ya aplica a otras piezas sin evidencia (ver Pendientes.md); no se
+harness ya aplica a otras piezas sin evidencia (ver docs/pendientes.md); no se
 construye a ciegas.
 """
 import subprocess

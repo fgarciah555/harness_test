@@ -14,7 +14,7 @@ determinísticos, contrato de `plan.json`) vive en `harness-core/` — ver
 sección "Los 3 flujos".
 
 Para el detalle de decisiones de diseño, qué se probó y qué falta, ver
-`handoff.md` — este README es la referencia operativa (cómo instalar, cómo
+`docs/handoff.md` — este README es la referencia operativa (cómo instalar, cómo
 correrlo), no la bitácora de diseño.
 
 ## Quién hace qué
@@ -92,7 +92,7 @@ cp harness-core/config/models.yaml.example harness-core/config/models.yaml
 
 `harness-core/config/permissions.yaml` no necesita tocarse — define qué
 puede leer/escribir cada agente y está pensado para no cambiar salvo que
-agregues un agente nuevo. Ver la tabla completa en `handoff.md`.
+agregues un agente nuevo. Ver la tabla completa en `docs/handoff.md`.
 
 ### Motor por API (DeepSeek)
 
@@ -116,7 +116,7 @@ DEEPSEEK_API_KEY=tu-key
 compatible con OpenAI), sin dependencias nuevas — usa `requests`, igual que
 `lm_studio.py`. Con `model: deepseek-chat` no hay razonamiento separado; con
 `model: deepseek-reasoner` (en uso por Compliance desde 2026-08-20 — ver
-`Pendientes.md`, "¿Compliance debería usar deepseek-reasoner?") el adapter
+`docs/pendientes.md`, "¿Compliance debería usar deepseek-reasoner?") el adapter
 maneja `reasoning_content` igual que el modelo "thinking" de LM Studio (ver
 Notas técnicas más abajo).
 
@@ -217,8 +217,8 @@ chequeo heurístico (regex, no LLM) que detecta
 `detalle_tecnico`/`interfaz` citando otro item sin tenerlo en `depende_de`, e
 imports `app.*` que ningún item genera o cuyo dueño no está declarado como
 dependencia (las dos clases de bug reales vistas en migraciones reales,
-ver `handoff.md`), más items que por tamaño/ambigüedad son candidatos a
-dividir en items más chicos (ver `handoff.md`, "Dividir items grandes en
+ver `docs/handoff.md`), más items que por tamaño/ambigüedad son candidatos a
+dividir en items más chicos (ver `docs/handoff.md`, "Dividir items grandes en
 sub-entregables"). A diferencia de `plan_validator.py` (estructural,
 sin falsos positivos, corre automático), `plan_lint.py` puede marcar
 referencias hacia adelante en la prosa como falso positivo — revisar cada
@@ -376,7 +376,8 @@ harness_test/                         (repo raíz)
 │       ├── templates/empaquetar.sh, start-local.sh
 │       └── schemas/plan.example.json
 ├── AGENTS.md, .agents/rules/           <- context pack de EJEMPLO para proyectos destino
-└── handoff.md, Pendientes.md, README.md   <- bitácora de diseño y referencia operativa del harness
+├── docs/handoff.md, docs/pendientes.md   <- bitácora de diseño y backlog del harness en sí
+└── README.md                              <- referencia operativa (este archivo)
 ```
 
 Y dentro de cada proyecto destino que el harness procese:
@@ -414,7 +415,7 @@ python tests/test_regression_check.py # sin red, valida la suite completa existe
 
 ## Limitaciones conocidas / pendientes de diseño
 
-Ver `Pendientes.md` — hoy incluye el agente de recuperación de LM Studio vía
+Ver `docs/pendientes.md` — hoy incluye el agente de recuperación de LM Studio vía
 SSH y la técnica de dividir items grandes en sub-entregables más chicos para
 el modelo local. Ninguno de los dos está implementado a propósito, están
 documentados para retomar la conversación de diseño antes de escribir código.
@@ -462,4 +463,4 @@ documentados para retomar la conversación de diseño antes de escribir código.
   vez de tratarlo como si ya estuviera resuelto. Sin esto, `--loop`
   reintentaba Executor varias veces seguidas sin que Compliance revisara
   nada en el medio (bug real encontrado y corregido probando contra LM
-  Studio real, ver `handoff.md`).
+  Studio real, ver `docs/handoff.md`).

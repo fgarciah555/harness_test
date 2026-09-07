@@ -118,7 +118,7 @@ sistemáticamente todos los archivos `always_on` relevantes al tipo de item**
 de cada una al redactar cada item por separado. Nos faltó hacer esto la
 primera vez que probamos contra un monolito real y un item violó una regla
 `always_on` de `backend-architecture.md` (el `commit()` en la capa
-equivocada) sin que ningún criterio lo detectara — ver `handoff.md`,
+equivocada) sin que ningún criterio lo detectara — ver `docs/handoff.md`,
 sección "Primeras pruebas reales".
 
 **Antes de escribir `detalle_tecnico` de un item que usa una librería/
@@ -148,7 +148,7 @@ cada campo de ahí — no inventarlo ni adivinarlo por convención.** El tipo
 resultante se declara en `decisiones_globales.schema_bd_origen` (referencia
 a la fuente) y se propaga como contrato obligatorio en la `interfaz` del
 item que define el modelo (import literal + tipo explícito, mismo mecanismo
-ya usado para `RowSchema` en items de repository, ver `handoff.md`, sección
+ya usado para `RowSchema` en items de repository, ver `docs/handoff.md`, sección
 "Row schemas Pydantic reemplazan `list[dict]` en queries con JOIN") — todo
 item dependiente que toque ese campo hereda ese tipo,
 no lo vuelve a decidir. Esto no reemplaza la fase de smoke test/tests: sigue
@@ -182,7 +182,7 @@ aislada.
 | `criterios_aceptacion` | string[] | Lista verificable — cada criterio debe poder chequearse (por Compliance o por un humano) sin ambigüedad. Evitar criterios vagos tipo "funciona bien". |
 | `depende_de` | string[] | IDs de otros items que deben estar `completado` antes de que este pueda ejecutarse. Lista vacía si no depende de nada. |
 | `interfaz` | object | Lo que este item **expone hacia afuera** — deliberadamente chico. Es lo único de este item que otro item puede necesitar leer si lo tiene en `depende_de`. Ver sección siguiente. |
-| `ticket_id` | string \| null | Opcional. Traza qué items vienen del mismo ticket/requerimiento de cliente, cuando el Planner parte un ticket grande en varios items chicos ("divide y vencerás" — ver `Pendientes.md`). No afecta la ejecución, es solo trazabilidad. |
+| `ticket_id` | string \| null | Opcional. Traza qué items vienen del mismo ticket/requerimiento de cliente, cuando el Planner parte un ticket grande en varios items chicos ("divide y vencerás" — ver `docs/pendientes.md`). No afecta la ejecución, es solo trazabilidad. |
 | `tests_requeridos` | object[] | Opcional. `{ "archivo": "...", "contenido": "<código pytest completo>" }[]`. Escritos por el Planner, no inventados por Executor/Compliance sobre la marcha — ver "Smoke test" más abajo. Un item sin este campo (o con lista vacía) simplemente no pasa por pytest, va directo a Compliance como hoy. |
 | `estado` | `"pendiente"` \| `"omitido"` | Ver nota sobre inmutabilidad abajo. |
 
@@ -265,7 +265,7 @@ promete hacia afuera.** Executor nunca lee la `interfaz` de su propio item
 existir de verdad, hay que pedirlo también, explícitamente, en
 `detalle_tecnico` — declararlo solo en `interfaz` no genera nada. Este error
 concreto pasó en la primera prueba contra un proyecto real (ver
-`handoff.md`).
+`docs/handoff.md`).
 
 **Reintentar un item ya `aprobado` invalida a sus dependientes.** Un item
 solo puede haberse generado *después* de que sus dependencias ya estuvieran
@@ -321,7 +321,7 @@ rechazo objetivo (stack trace real) en vez de que un LLM adivine leyendo.
   escritura sobre `project_dir`, así que el contenido vive en `plan.json`
   hasta que `smoke_test.py` lo materializa como archivo real, justo antes
   de correr pytest.
-- **Aislamiento (mínimo, no sandboxing real — ver `Pendientes.md`):**
+- **Aislamiento (mínimo, no sandboxing real — ver `docs/pendientes.md`):**
   timeout al proceso (`TIMEOUT_SEGUNDOS` en `smoke_test.py`) y nada de
   tocar la base de datos real. Para esto último, `tests_requeridos` debe
   usar el mecanismo que `configuracion` en `decisiones_globales` ya prevé:
@@ -484,7 +484,7 @@ solo cuando `tipo_flujo == "mantencion"` (y el item no es frontend/infra).
   mismo criterio que ya usa `smoke_test.py`.
 - **Alcance v1: solo backend/pytest.** Regresión de frontend (`ng test`)
   queda sin implementar por falta de caso real todavía — mismo criterio que
-  ya aplica el harness a otras piezas sin evidencia (ver `Pendientes.md`), no
+  ya aplica el harness a otras piezas sin evidencia (ver `docs/pendientes.md`), no
   se construye a ciegas.
 - **Timeout propio, más alto que el del smoke test** (`smoke_test.
   TIMEOUT_SEGUNDOS=60` vs. `regression_check.TIMEOUT_SEGUNDOS=300`) — una
@@ -519,7 +519,7 @@ tratamiento que los items de configuración base) apenas se bootstrapea el
 proyecto, no esperar a que aparezca al planificar las pantallas reales — el
 criterio de aceptación debe verificar negativamente contra el texto/markup
 conocido del scaffold (ej. "no contiene el texto 'Congratulations'"), no solo
-que compile. Ver `handoff.md` para un ejemplo real aplicado.
+que compile. Ver `docs/handoff.md` para un ejemplo real aplicado.
 
 ### Items "ensambladores" van al FINAL, dependen de TODO lo que montan — vale igual para rutas Angular que para routers FastAPI
 
@@ -596,7 +596,7 @@ vivo en un item de reporte frontend real).
 ### Revisiones sucesivas de un item: `archivos_destino` acumula, no se resetea
 
 **Contexto (2026-08-24):** corriendo un proyecto real completo desde
-cero por primera vez (ver `handoff.md`), 8 de 33 items
+cero por primera vez (ver `docs/handoff.md`), 8 de 33 items
 fallaron por el mismo motivo: un archivo que el proyecto real ya tenía en
 disco (`autenticacion.models.ts`, `menu-cliente.component.ts`,
 `saldo_service.py`/`saldo_response.py`, `factura_response.py`, etc.) no
@@ -762,7 +762,7 @@ nuevo), qué símbolos quedaron pensados para que otro item los reuse. Ver
   vieja podía convivir para siempre al lado de la real. Motivó esto: un
   router falso predicho que Executor nunca implementó bajo ese nombre
   sobrevivía igual en la unión, quemando 3 reintentos + 1 escalado a
-  `executor_senior` (ver `handoff.md`). La
+  `executor_senior` (ver `docs/handoff.md`). La
   poda es contra el código, no contra "si la real lo menciona" — un símbolo
   real que la interfaz real no vuelve a mencionar explícitamente sigue
   sobreviviendo igual, la poda no lo afecta.
@@ -850,10 +850,10 @@ código del proyecto.
 `orchestrator.py`) se recalcula desde cero en cada llamada y el historial
 de rechazos de un item vive solo en memoria dentro de `loop()`
 (`historial_feedback`, un dict local) — si el proceso se corta a mitad de
-una corrida (ya documentado varias veces, ver `handoff.md`), ese historial
+una corrida (ya documentado varias veces, ver `docs/handoff.md`), ese historial
 se pierde con él y `executor_senior` termina viendo solo lo que sobrevivió
 desde el último reinicio. Además, en el caso de oscilación más severo visto
-hasta ahora (ver `handoff.md`), el historial en
+hasta ahora (ver `docs/handoff.md`), el historial en
 prosa no bastó — hizo falta que un humano armara a mano una tabla de
 hechos verificados contra el código real para que `executor_senior`
 convergiera al primer intento. Esa tabla nunca tuvo un lugar formal donde
@@ -966,7 +966,7 @@ nada se rompa (mismo criterio que ya rige `--sin-confirmar` en el resto de
 `historial_feedback` (dict en memoria, se pierde si el proceso se corta) —
 lee el mismo `.harness/logs/tickets/<item_id>.md`, que para este punto ya
 tiene el historial completo de todos los intentos previos. Cierra el gap
-real ya documentado en `handoff.md` ("Ticket de reintento — feedback
+real ya documentado en `docs/handoff.md` ("Ticket de reintento — feedback
 persistido a archivo"): un corte de proceso a mitad de corrida ya no pierde
 el historial de rechazos, sigue en disco.
 
@@ -992,7 +992,7 @@ que un agente deba redactar.
   agentes), no uno de los cuatro agentes de `access_control.py`. No está
   sujeto a la tabla de permisos por agente porque no es un agente — es
   lógica determinística del propio harness, en la misma categoría que
-  Format check / Smoke test (ver `handoff.md`).
+  Format check / Smoke test (ver `docs/handoff.md`).
 - **Trigger:** se regenera cada vez que Compliance escribe un veredicto
   `"aprobado"` para un item con `tipo: "backend"` en
   `.harness/validation/<item_id>.json`.
@@ -1024,7 +1024,7 @@ proyecto (no investiga, no recuerda de memoria de entrenamiento).
   `orchestrator.py::validar_con_format_check`) **y** tiene al menos un
   bloque propio en `.harness/logs/reporte_fallas.md` (helper
   `_item_tuvo_rechazos`). Un item aprobado a la primera no dispara nada — no
-  hay error real que documentar. Ver `Pendientes.md`/`handoff.md` para el
+  hay error real que documentar. Ver `docs/pendientes.md`/`docs/handoff.md` para el
   razonamiento completo de por qué este disparador y no "al fallar" ni "al
   cerrar el proyecto".
 - **Fuente de datos:** los bloques de `reporte_fallas.md` que pertenecen a
@@ -1045,7 +1045,7 @@ proyecto (no investiga, no recuerda de memoria de entrenamiento).
 - **Honestidad sobre la fuente:** el candidato dice explícitamente que está
   "confirmado en código real de este proyecto", nunca "verificado contra
   documentación oficial" — el agente no tiene forma de chequear la doc real
-  (mismo bloqueo que sigue abierto en `Pendientes.md`, "Agente investigador
+  (mismo bloqueo que sigue abierto en `docs/pendientes.md`, "Agente investigador
   de tecnologías"). Es al humano que revisa a quien le toca esa
   verificación antes de dar el candidato por bueno en otro proyecto.
 - **Nunca bloquea el pipeline.** Un fallo del motor o una respuesta mal
@@ -1173,7 +1173,7 @@ antes de llamar a Executor/Compliance, no llega a ejecutarse.
   separados o repensar la granularidad — no compartir destino. Un item SÍ
   puede *importar* código de un archivo que otro item (una dependencia) ya
   generó, eso es reuso normal, distinto de escribir sobre el mismo archivo.
-  Encontrado en la práctica en una migración real — ver `handoff.md`.
+  Encontrado en la práctica en una migración real — ver `docs/handoff.md`.
 
 ## Ver también
 
